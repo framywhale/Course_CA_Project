@@ -215,8 +215,6 @@ module decode_stage(
 
 
         // data transfering to EXE stage
-//        Rt_ID_EXE        <= rt;
- //       Rd_ID_EXE        <= rd;
         RegWaddr_ID_EXE  <=          RegWaddr_ID;
         Sa_ID_EXE        <=                Sa_ID;
         PC_ID_EXE        <=             PC_IF_ID;
@@ -266,10 +264,7 @@ module decode_stage(
          SB_ID_EXE  <=       SB_ID;
          SH_ID_EXE  <=       SH_ID;
 
-
     // data transfering to EXE stage
-//        Rt_ID_EXE        <= rt;
-//       Rd_ID_EXE        <= rd;
     RegWaddr_ID_EXE  <=          RegWaddr_ID;
     Sa_ID_EXE        <=                Sa_ID;
     PC_ID_EXE        <=             PC_IF_ID;
@@ -358,20 +353,14 @@ module Branch_Cond(
     input [ 5:0] B_Type,   //blt ble bgt bge beq bne
     output       Cond
 );
-	wire zero, ge, gt, le, lt;
-/*    ALU Zero(
-        .A     (      A),
-        .B     (      B),
-        .ALUop (4'b0110),   //SUB
-        .Zero  (   zero)
-    ); */
-    assign zero = ~(|(A - B));
-    assign ge = ~A[31];
-    assign gt = ~A[31] &    |A[30:0];
-    assign le =  A[31] | (&(~A[31:0]));
-    assign lt =  A[31];
+  wire zero, ge, gt, le, lt;
+  assign zero = ~(|(A - B));
+  assign lt   =  A[31];
+  assign ge   = ~A[31];
+  assign gt   = ~A[31] &    |A[30:0];
+  assign le   =  A[31] | (&(~A[31:0]));
 
-    assign Cond = ((B_Type[0] & ~zero | B_Type[1] & zero) | (B_Type[2] & ge | B_Type[3] & gt)) | (B_Type[4] & le | B_Type[5] & lt);
+  assign Cond = ((B_Type[0] & ~zero | B_Type[1] & zero) | (B_Type[2] & ge | B_Type[3] & gt)) | (B_Type[4] & le | B_Type[5] & lt);
 
 
 endmodule

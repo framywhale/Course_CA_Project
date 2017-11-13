@@ -66,13 +66,13 @@ assign inst_sram_wdata = 32'b0;
 wire   rst;
 assign rst = ~resetn;
 
-wire         JSrc;
-wire [ 1:0] PCSrc;
+wire                     JSrc;
+wire [ 1:0]             PCSrc;
 
-wire [ 4:0] RegRaddr1;
-wire [ 4:0] RegRaddr2;
-wire [31:0] RegRdata1;
-wire [31:0] RegRdata2;
+wire [ 4:0]         RegRaddr1;
+wire [ 4:0]         RegRaddr2;
+wire [31:0]         RegRdata1;
+wire [31:0]         RegRdata2;
 
 wire [31:0]           PC_next;
 wire [31:0]          PC_IF_ID;
@@ -117,8 +117,6 @@ wire [ 1:0]         SW_ID_EXE; //new
 wire                SB_ID_EXE; //new
 wire                SH_ID_EXE; //new
 
-//wire [ 4:0]         Rt_ID_EXE;
-//wire [ 4:0]         Rd_ID_EXE;
 wire [ 4:0]   RegWaddr_ID_EXE;
 wire [31:0]     ALUResult_EXE;
 wire [31:0]     ALUResult_MEM;
@@ -162,7 +160,6 @@ wire [ 1:0]         LW_MEM_WB; //new
 
 wire [31:0]  ALUResult_MEM_WB;
 wire [31:0]  RegRdata2_MEM_WB; //new
-//wire [31:0]   MemRdata_MEM_WB;
 wire [31:0]         PC_MEM_WB;
 wire [31:0]             PC_WB;
 wire [31:0]       RegWdata_WB;
@@ -171,21 +168,19 @@ wire [ 3:0]       RegWrite_WB;
 
 wire [31:0] RegWdata_Bypass_WB;
 
-
 wire [63:0]  MULT_Result;
 wire [31:0]  DIV_quotient;
 wire [31:0]  DIV_remainder;
 wire DIV_Busy;
 wire DIV_Complete;
 
-
-
+// HILO IO
 wire [31:0] HI_in;
 wire [31:0] LO_in;
 wire [ 1:0] HILO_Write;
 wire [31:0] HI_out;
 wire [31:0] LO_out;
-// HILO IO
+
 
 
 nextpc_gen nextpc_gen(
@@ -194,7 +189,6 @@ nextpc_gen nextpc_gen(
     .PCWrite           (           PCWrite), // I  1  Stall
     .JSrc              (              JSrc), // I  1
     .PCSrc             (             PCSrc), // I  2
-//    .inst_addr         (          PC_next), // I 32
     .JR_target         (      JR_target_ID), // I 32
     .J_target          (       J_target_ID), // I 32
     .Br_addr           (      Br_target_ID), // I 32

@@ -31,24 +31,31 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------------
 ------------------------------------------------------------------------------*/
 
-
 module nextpc_gen(
     input  wire        clk,
     input  wire        rst,
-    input  wire    PCWrite,  //For Stall
+    input  wire        PCWrite,  // For Stall
     input  wire        JSrc,
+    input  wire        trap,
     input  wire [ 1:0] PCSrc,
     input  wire [31:0] JR_target,
     input  wire [31:0] J_target,
     input  wire [31:0] Br_addr,
+    input  wire [31:0] epc,
     output reg  [31:0] PC_next,
     output wire [31:0] inst_sram_addr
   );
-    parameter reset_addr = 32'hbfc00000;
+    parameter reset_addr  = 32'hbfc00000;
+    parameter except_addr = 32'hbfc00380;
     
-    wire [31:0] Jump_addr, inst_addr;
-    assign Jump_addr = JSrc ? JR_target    : J_target; 
-    assign inst_sram_addr = PCWrite ? inst_addr : PC_next;
+    wire [31:0] Jump_addr, inst_addr, PC_mux;
+
+    assign Jump_addr = JSrc ? JR_target   : J_target; 
+
+    assign inst_addr = trap ? except_addr : 
+                       eret ? epc         : PC_mux;
+
+    assign inst_sram_addr = PCWrite ? inst_addr   : PC_next;
   
     reg [31:0] PC;
     always @(posedge clk) begin
@@ -72,8 +79,7 @@ module nextpc_gen(
         .Src3   (    Br_addr),
         .Src4   (      32'd0),
         .op     (      PCSrc),
-        .Result (  inst_addr)
-    );
-    
+        .Result (     PC_mux)
+    ); 
 
 endmodule //nextpc_gen

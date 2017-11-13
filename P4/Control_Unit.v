@@ -2,6 +2,7 @@ module Control_Unit(
     input  wire       rst,
     input  wire       BranchCond,
     input  wire [4:0] rt,
+    input  wire [4:0] rs,
     input  wire [5:0] op,
     input  wire [5:0] func,
     output wire       MemEn,
@@ -28,12 +29,14 @@ module Control_Unit(
     output wire [1:0] LW,
     output wire [1:0] SW,
     output wire       SB,
-    output wire       SH
+    output wire       SH,
+    output wire       trap,
+    output wire       eret,
+    output wire       cp0_Write  
   );
-///////////////////////////////////////////////////////
-//              Instruction compare                  //
-///////////////////////////////////////////////////////
-wire is_branch;
+////////////////////////////////////////////////////////////
+//                   Instruction compare                  //
+////////////////////////////////////////////////////////////
 
 // Stage 1 Instructions
 wire inst_lw     = (op == 6'b100011);
@@ -99,9 +102,18 @@ wire inst_sh     = (op == 6'b101001);
 wire inst_swl    = (op == 6'b101010);
 wire inst_swr    = (op == 6'b101110);
 
+// Exception and Interrupt related instructions
+wire inst_mtc0    = (op == 6'b010000) && (rs == 5'b00100);
+wire inst_mfc0    = (op == 6'b010000) && (rs == 5'b00000);
+wire inst_syscall = (op == 6'b000000) && (func == 6'b001100);
+wire inst_eret    = (op == 6'b010000) && (func == 6'b011000);
+wire inst_break   = (op == 6'b000000) && (func == 6'b001101);
+
 ///////////////////////////////////////////////////////////////////////////////
 //                        Control signal assignment                          //
 ///////////////////////////////////////////////////////////////////////////////
+wire is_branch;
+
 assign MemToReg   = ~rst &  (inst_lw   | inst_lb    | inst_lbu  | inst_lh     |
                              inst_lhu  | inst_lwl   | inst_lwr  );
 assign JSrc       = ~rst &  (inst_jr   | inst_jalr  );
@@ -158,7 +170,7 @@ assign RegWrite = {4{~rst & (inst_lw    | inst_addiu  | inst_slti  |
                             inst_bltzal | inst_bgezal | inst_mfhi  |
                             inst_mflo   | inst_lb     | inst_lbu   |
                             inst_lh     | inst_lhu    | inst_lwl   |
-                            inst_lwr    )}};
+                            inst_lwr    | inst_mfc0   )}};
 
 
 assign MemWrite[3] = ~rst & (inst_sw | inst_swl | inst_swr);
@@ -221,5 +233,9 @@ assign SW[0] = inst_swr | inst_sw;
 
 assign SB = inst_sb;
 assign SH = inst_sh;
+
+assign eret = inst_eret;
+assign trap = inst_syscall | inst_break;
+assign cp0_Write = inst_mtc0 | inst_syscall | inst_break;
 
 endmodule
