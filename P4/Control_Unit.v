@@ -104,8 +104,8 @@ wire inst_swl    = (op == 6'b101010);
 wire inst_swr    = (op == 6'b101110);
 
 // Exception and Interrupt related instructions
-wire inst_mtc0    = (op == 6'b010000) && (rs == 5'b00100);
 wire inst_mfc0    = (op == 6'b010000) && (rs == 5'b00000);
+wire inst_mtc0    = (op == 6'b010000) && (rs == 5'b00100);
 wire inst_syscall = (op == 6'b000000) && (func == 6'b001100);
 wire inst_eret    = (op == 6'b010000) && (func == 6'b011000);
 wire inst_break   = (op == 6'b000000) && (func == 6'b001101);
@@ -160,18 +160,18 @@ assign RegDst[0]  = ~rst & (inst_addu   | inst_or     | inst_slt    |
                             inst_mfhi   | inst_mflo   );
 
 assign RegWrite = {4{~rst & (inst_lw    | inst_addiu  | inst_slti  |
-                            inst_sltiu  | inst_lui    | inst_addu  |
-                            inst_or     | inst_slt    | inst_sll   |
-                            inst_jal    | inst_addi   | inst_andi  |
-                            inst_ori    | inst_xori   | inst_add   |
-                            inst_sub    | inst_subu   | inst_sltu  |
-                            inst_and    | inst_nor    | inst_xor   |
-                            inst_sllv   | inst_sra    | inst_srav  |
-                            inst_srl    | inst_srlv   | inst_jalr  |
-                            inst_bltzal | inst_bgezal | inst_mfhi  |
-                            inst_mflo   | inst_lb     | inst_lbu   |
-                            inst_lh     | inst_lhu    | inst_lwl   |
-                            inst_lwr    | inst_mfc0   )}};
+                             inst_sltiu | inst_lui    | inst_addu  |
+                             inst_or    | inst_slt    | inst_sll   |
+                             inst_jal   | inst_addi   | inst_andi  |
+                             inst_ori   | inst_xori   | inst_add   |
+                             inst_sub   | inst_subu   | inst_sltu  |
+                             inst_and   | inst_nor    | inst_xor   |
+                             inst_sllv  | inst_sra    | inst_srav  |
+                             inst_srl   | inst_srlv   | inst_jalr  |
+                             inst_bltzal| inst_bgezal | inst_mfhi  |
+                             inst_mflo  | inst_lb     | inst_lbu   |
+                             inst_lh    | inst_lhu    | inst_lwl   |
+                             inst_lwr   | inst_mfc0   )}};
 
 
 assign MemWrite[3] = ~rst & (inst_sw | inst_swl | inst_swr);
@@ -202,42 +202,43 @@ assign ALUop[0] = ~rst & (inst_slti   | inst_slt  | inst_or     |
                           inst_nor    | inst_sllv | inst_sra    |
                           inst_srav   );
 
-assign B_Type[5] = inst_bltz | inst_bltzal;
-assign B_Type[4] = inst_blez;
-assign B_Type[3] = inst_bgtz;
-assign B_Type[2] = inst_bgez | inst_bgezal;
-assign B_Type[1] = inst_beq;
-assign B_Type[0] = inst_bne;
+assign B_Type[5] = ~rst & (inst_bltz | inst_bltzal);
+assign B_Type[4] = ~rst & (inst_blez);
+assign B_Type[3] = ~rst & (inst_bgtz);
+assign B_Type[2] = ~rst & (inst_bgez | inst_bgezal);
+assign B_Type[1] = ~rst & (inst_beq);
+assign B_Type[0] = ~rst & (inst_bne);
 
-assign MULT[1] = inst_multu;
-assign MULT[0] = inst_mult;
+assign MULT[1] = ~rst & inst_multu;
+assign MULT[0] = ~rst & inst_mult;
 
-assign DIV[1]  = inst_divu;
-assign DIV[0]  = inst_div;
+assign DIV[1]  = ~rst & inst_divu;
+assign DIV[0]  = ~rst & inst_div;
 
-assign MFHL[1] = inst_mfhi;
-assign MFHL[0] = inst_mflo;
+assign MFHL[1] = ~rst & inst_mfhi;
+assign MFHL[0] = ~rst & inst_mflo;
 
-assign MTHL[1] = inst_mthi;
-assign MTHL[0] = inst_mtlo;
+assign MTHL[1] = ~rst & inst_mthi;
+assign MTHL[0] = ~rst & inst_mtlo;
 
-assign LB  = inst_lb;
-assign LBU = inst_lbu;
-assign LH  = inst_lh;
-assign LHU = inst_lhu;
+assign LB  = ~rst & inst_lb;
+assign LBU = ~rst & inst_lbu;
+assign LH  = ~rst & inst_lh;
+assign LHU = ~rst & inst_lhu;
 
-assign LW[1] = inst_lwl | inst_lw;
-assign LW[0] = inst_lwr | inst_lw;
+assign LW[1] = ~rst & (inst_lwl | inst_lw);
+assign LW[0] = ~rst & (inst_lwr | inst_lw);
 
-assign SW[1] = inst_swl | inst_sw;
-assign SW[0] = inst_swr | inst_sw;
+assign SW[1] = ~rst & (inst_swl | inst_sw);
+assign SW[0] = ~rst & (inst_swr | inst_sw);
 
-assign SB = inst_sb;
-assign SH = inst_sh;
+assign SB =  ~rst & inst_sb;
+assign SH =  ~rst & inst_sh;
 
-assign mfc0 = inst_mfc0;
-assign eret = inst_eret;
-assign trap = inst_syscall | inst_break;
-assign cp0_Write = inst_mtc0 | inst_syscall | inst_break;
+assign mfc0 = ~rst &  inst_mfc0;
+assign eret = ~rst &  inst_eret;
+assign trap = ~rst & (inst_syscall | inst_break);
+
+assign cp0_Write = ~rst & (inst_mtc0 | inst_syscall | inst_break);
 
 endmodule
