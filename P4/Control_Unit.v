@@ -32,7 +32,8 @@ module Control_Unit(
     output wire       SH,
     output wire       trap,
     output wire       eret,
-    output wire       cp0_Write  
+    output wire       cp0_Write,
+    output wire       mfc0  
   );
 ////////////////////////////////////////////////////////////
 //                   Instruction compare                  //
@@ -234,6 +235,7 @@ assign SW[0] = inst_swr | inst_sw;
 assign SB = inst_sb;
 assign SH = inst_sh;
 
+assign mfc0 = inst_mfc0;
 assign eret = inst_eret;
 assign trap = inst_syscall | inst_break;
 assign cp0_Write = inst_mtc0 | inst_syscall | inst_break;
