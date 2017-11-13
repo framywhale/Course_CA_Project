@@ -37,6 +37,7 @@ module nextpc_gen(
     input  wire        PCWrite,  // For Stall
     input  wire        JSrc,
     input  wire        trap,
+    input  wire        eret,
     input  wire [ 1:0] PCSrc,
     input  wire [31:0] JR_target,
     input  wire [31:0] J_target,
