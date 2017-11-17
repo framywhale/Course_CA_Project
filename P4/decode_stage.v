@@ -1,38 +1,13 @@
-/*
-  ------------------------------------------------------------------------------
-  --------------------------------------------------------------------------------
-  Copyright (c) 2016, Loongson Technology Corporation Limited.
+/*----------------------------------------------------------------*
+// Filename      :  decode_stage.v
+// Description   :  5 pipelined CPU decode stage
+// Author        :  Gou Lingrui & Wu Jiahao
+// Email         :  wujiahao15@mails.ucas.ac.cn
+// Created Time  :  2017-10-11 21:04:12
+// Modified Time :  2017-11-17 17:35:21
+//----------------------------------------------------------------*/
 
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without modification,
-  are permitted provided that the following conditions are met:
-
-  1. Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-  2. Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation and/or
-  other materials provided with the distribution.
-
-  3. Neither the name of Loongson Technology Corporation Limited nor the names of
-  its contributors may be used to endorse or promote products derived from this
-  software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  DISCLAIMED. IN NO EVENT SHALL LOONGSON TECHNOLOGY CORPORATION LIMITED BE LIABLE
-  TO ANY PARTY FOR DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  --------------------------------------------------------------------------------
-  --------------------------------------------------------------------------------
- */
-
+`timescale 10ns / 1ns
 module decode_stage(
     input  wire                     clk,
     input  wire                     rst,
@@ -64,7 +39,7 @@ module decode_stage(
     input  wire [ 1:0]     RegRdata1_src,
     input  wire [ 1:0]     RegRdata2_src,
     input  wire             ID_EXE_Stall,
-    input  wire               DIV_Complete,
+    input  wire             DIV_Complete,
     // control signals from bypass module
     output wire                    JSrc,
     output wire [ 1:0]            PCSrc,
@@ -73,7 +48,6 @@ module decode_stage(
     output wire [31:0]     JR_target_ID,
     output wire [31:0]     Br_target_ID,
     // control signals passing to EXE stage
-//    output reg  [ 1:0]    RegDst_ID_EXE,
     output reg  [ 1:0]   ALUSrcA_ID_EXE,
     output reg  [ 1:0]   ALUSrcB_ID_EXE,
     output reg  [ 3:0]     ALUop_ID_EXE,
@@ -85,19 +59,18 @@ module decode_stage(
     output reg  [ 1:0]       DIV_ID_EXE,
     output reg  [ 1:0]      MFHL_ID_EXE,
     output reg  [ 1:0]      MTHL_ID_EXE,
-    output reg                LB_ID_EXE,  //new
-    output reg               LBU_ID_EXE,  //new
-    output reg                LH_ID_EXE,  //new
-    output reg               LHU_ID_EXE,  //new
-    output reg  [ 1:0]        LW_ID_EXE,  //new
-    output reg  [ 1:0]        SW_ID_EXE,  //new
-    output reg                SB_ID_EXE,  //new
-    output reg                SH_ID_EXE,  //new
+    output reg                LB_ID_EXE,  
+    output reg               LBU_ID_EXE,  
+    output reg                LH_ID_EXE,  
+    output reg               LHU_ID_EXE,  
+    output reg  [ 1:0]        LW_ID_EXE,  
+    output reg  [ 1:0]        SW_ID_EXE,  
+    output reg                SB_ID_EXE,  
+    output reg                SH_ID_EXE,  
     output reg              mfc0_ID_EXE,
+    output reg         is_signed_ID_EXE,
 
     // data transfering to EXE stage
-//    output reg  [ 4:0]        Rt_ID_EXE,
-//    output reg  [ 4:0]        Rd_ID_EXE,
     output reg  [ 4:0]  RegWaddr_ID_EXE,
     output reg  [31:0]  PC_add_4_ID_EXE,
     output reg  [31:0]        PC_ID_EXE,
@@ -154,6 +127,7 @@ module decode_stage(
     wire                   SB_ID;
     wire                   SH_ID;
     wire                 mfc0_ID;
+    wire            is_signed_ID;
     // temp, intend to remember easily
 
     wire [31:0]  RegRdata1_Final_ID;
@@ -195,101 +169,97 @@ module decode_stage(
 
     always @(posedge clk) begin
     if (rst) begin
-    {MemEn_ID_EXE, MemToReg_ID_EXE, ALUop_ID_EXE, RegWrite_ID_EXE, MemWrite_ID_EXE, ALUSrcA_ID_EXE, ALUSrcB_ID_EXE, MULT_ID_EXE, DIV_ID_EXE, MFHL_ID_EXE, MTHL_ID_EXE, LB_ID_EXE, LBU_ID_EXE, LH_ID_EXE, LHU_ID_EXE, LW_ID_EXE, SW_ID_EXE, SB_ID_EXE, SH_ID_EXE, mfc0_ID_EXE,
-         RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, RegRdata1_ID_EXE, RegRdata2_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE, cp0Rdata_ID_EXE} <= 'd0;
+      {MemEn_ID_EXE, MemToReg_ID_EXE, ALUop_ID_EXE, RegWrite_ID_EXE, MemWrite_ID_EXE, ALUSrcA_ID_EXE, ALUSrcB_ID_EXE, MULT_ID_EXE, DIV_ID_EXE, MFHL_ID_EXE, MTHL_ID_EXE, LB_ID_EXE, LBU_ID_EXE, LH_ID_EXE, LHU_ID_EXE, LW_ID_EXE, SW_ID_EXE, SB_ID_EXE, SH_ID_EXE, mfc0_ID_EXE,
+        RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, RegRdata1_ID_EXE, RegRdata2_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE, cp0Rdata_ID_EXE} <= 'd0;
      end
      else
     if (~ID_EXE_Stall) begin
         // control signals passing to EXE stage
-        MemEn_ID_EXE    <=    MemEn_ID;
-        MemToReg_ID_EXE <= MemToReg_ID;
-        ALUop_ID_EXE    <=    ALUop_ID;
-//        RegDst_ID_EXE   <=   RegDst_ID;
-        RegWrite_ID_EXE <= RegWrite_ID;
-        MemWrite_ID_EXE <= MemWrite_ID;
-        ALUSrcA_ID_EXE  <=  ALUSrcA_ID;
-        ALUSrcB_ID_EXE  <=  ALUSrcB_ID;
-           MULT_ID_EXE  <=     MULT_ID;
-            DIV_ID_EXE  <=      DIV_ID;
-           MFHL_ID_EXE  <=     MFHL_ID;
-           MTHL_ID_EXE  <=     MTHL_ID;
-             LB_ID_EXE  <=       LB_ID;
-            LBU_ID_EXE  <=      LBU_ID;
-             LH_ID_EXE  <=       LH_ID;
-            LHU_ID_EXE  <=      LHU_ID;
-             LW_ID_EXE  <=       LW_ID;
-             SW_ID_EXE  <=       SW_ID;
-             SB_ID_EXE  <=       SB_ID;
-             SH_ID_EXE  <=       SH_ID;
-           mfc0_ID_EXE  <=     mfc0_ID;
+        MemEn_ID_EXE    <=           MemEn_ID;
+        MemToReg_ID_EXE <=        MemToReg_ID;
+        ALUop_ID_EXE    <=           ALUop_ID;
+        RegWrite_ID_EXE <=        RegWrite_ID;
+        MemWrite_ID_EXE <=        MemWrite_ID;
+        ALUSrcA_ID_EXE  <=         ALUSrcA_ID;
+        ALUSrcB_ID_EXE  <=         ALUSrcB_ID;
+           MULT_ID_EXE  <=            MULT_ID;
+            DIV_ID_EXE  <=             DIV_ID;
+           MFHL_ID_EXE  <=            MFHL_ID;
+           MTHL_ID_EXE  <=            MTHL_ID;
+             LB_ID_EXE  <=              LB_ID;
+            LBU_ID_EXE  <=             LBU_ID;
+             LH_ID_EXE  <=              LH_ID;
+            LHU_ID_EXE  <=             LHU_ID;
+             LW_ID_EXE  <=              LW_ID;
+             SW_ID_EXE  <=              SW_ID;
+             SB_ID_EXE  <=              SB_ID;
+             SH_ID_EXE  <=              SH_ID;
+           mfc0_ID_EXE  <=            mfc0_ID;
+      is_signed_ID_EXE  <=       is_signed_ID;
 
-        // data transfering to EXE stage
-//        Rt_ID_EXE        <= rt;
- //       Rd_ID_EXE        <= rd;
-        RegWaddr_ID_EXE  <=          RegWaddr_ID;
-        Sa_ID_EXE        <=                Sa_ID;
-        PC_ID_EXE        <=             PC_IF_ID;
-        PC_add_4_ID_EXE  <=       PC_add_4_IF_ID;
-        RegRdata1_ID_EXE <=   RegRdata1_Final_ID;
-        RegRdata2_ID_EXE <=   RegRdata2_Final_ID;
-        SgnExtend_ID_EXE <=         SgnExtend_ID;
-          ZExtend_ID_EXE <=           ZExtend_ID;
-         cp0Rdata_ID_EXE <=          cp0Rdata_ID;
+      // data transfering to EXE stage
+      RegWaddr_ID_EXE   <=        RegWaddr_ID;
+      Sa_ID_EXE         <=              Sa_ID;
+      PC_ID_EXE         <=           PC_IF_ID;
+      PC_add_4_ID_EXE   <=     PC_add_4_IF_ID;
+      RegRdata1_ID_EXE  <= RegRdata1_Final_ID;
+      RegRdata2_ID_EXE  <= RegRdata2_Final_ID;
+      SgnExtend_ID_EXE  <=       SgnExtend_ID;
+        ZExtend_ID_EXE  <=         ZExtend_ID;
+       cp0Rdata_ID_EXE  <=        cp0Rdata_ID;
     end
-    else if (~(|DIV_ID_EXE))
-    {MemEn_ID_EXE, MemToReg_ID_EXE, ALUop_ID_EXE, 
-     RegWrite_ID_EXE, MemWrite_ID_EXE, ALUSrcA_ID_EXE, 
-     ALUSrcB_ID_EXE, MULT_ID_EXE, DIV_ID_EXE, MFHL_ID_EXE, 
-     MTHL_ID_EXE, LB_ID_EXE, LBU_ID_EXE, LH_ID_EXE, LHU_ID_EXE, 
-     LW_ID_EXE, SW_ID_EXE, SB_ID_EXE, SH_ID_EXE, mfc0_ID_EXE,            //control
-     RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, RegRdata1_ID_EXE, RegRdata2_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE, cp0Rdata_ID_EXE} <= 'd0;
-     else if (~DIV_Complete) begin
-     {MemEn_ID_EXE, MemToReg_ID_EXE, ALUop_ID_EXE, 
-     RegWrite_ID_EXE, MemWrite_ID_EXE, ALUSrcA_ID_EXE, 
-     ALUSrcB_ID_EXE, MULT_ID_EXE, MFHL_ID_EXE, MTHL_ID_EXE, 
-     LB_ID_EXE, LBU_ID_EXE, LH_ID_EXE, LHU_ID_EXE, LW_ID_EXE, 
-     SW_ID_EXE, SB_ID_EXE, SH_ID_EXE,  mfc0_ID_EXE,                    //control
-          RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE, cp0Rdata_ID_EXE} <= 'd0;
-     DIV_ID_EXE <= DIV_ID_EXE;
-     RegRdata1_ID_EXE <= RegRdata1_ID_EXE;
-     RegRdata2_ID_EXE <= RegRdata2_ID_EXE;
+    else if (~(|DIV_ID_EXE)) begin
+      {    MemEn_ID_EXE,  MemToReg_ID_EXE,      ALUop_ID_EXE, RegWrite_ID_EXE, 
+        MemWrite_ID_EXE,   ALUSrcA_ID_EXE,    ALUSrcB_ID_EXE,     MULT_ID_EXE,     
+             DIV_ID_EXE,      MFHL_ID_EXE,       MTHL_ID_EXE,       LB_ID_EXE, //control
+             LBU_ID_EXE,        LH_ID_EXE,        LHU_ID_EXE,       LW_ID_EXE, 
+              SW_ID_EXE,        SB_ID_EXE,         SH_ID_EXE,     mfc0_ID_EXE,            
+        RegWaddr_ID_EXE,        Sa_ID_EXE,         PC_ID_EXE, PC_add_4_ID_EXE, 
+       RegRdata1_ID_EXE, RegRdata2_ID_EXE,  SgnExtend_ID_EXE,  ZExtend_ID_EXE, cp0Rdata_ID_EXE} <= 'd0;
+    end
+    else if (~DIV_Complete) begin
+      {   MemEn_ID_EXE,   MemToReg_ID_EXE,    ALUop_ID_EXE,  RegWrite_ID_EXE,
+       MemWrite_ID_EXE,    ALUSrcA_ID_EXE,  ALUSrcB_ID_EXE,      MULT_ID_EXE,
+           MFHL_ID_EXE,       MTHL_ID_EXE,       LB_ID_EXE,       LBU_ID_EXE, //control
+             LH_ID_EXE,        LHU_ID_EXE,       LW_ID_EXE,        SW_ID_EXE, 
+             SB_ID_EXE,         SH_ID_EXE,     mfc0_ID_EXE,  RegWaddr_ID_EXE, 
+             Sa_ID_EXE,         PC_ID_EXE, PC_add_4_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE, cp0Rdata_ID_EXE} <= 'd0;
+
+            DIV_ID_EXE <= DIV_ID_EXE;
+      RegRdata1_ID_EXE <= RegRdata1_ID_EXE;
+      RegRdata2_ID_EXE <= RegRdata2_ID_EXE;
     end
     else begin
-    MemEn_ID_EXE    <=    MemEn_ID;
-    MemToReg_ID_EXE <= MemToReg_ID;
-    ALUop_ID_EXE    <=    ALUop_ID;
-//        RegDst_ID_EXE   <=   RegDst_ID;
-    RegWrite_ID_EXE <= RegWrite_ID;
-    MemWrite_ID_EXE <= MemWrite_ID;
-    ALUSrcA_ID_EXE  <=  ALUSrcA_ID;
-    ALUSrcB_ID_EXE  <=  ALUSrcB_ID;
-       MULT_ID_EXE  <=     MULT_ID;
-        DIV_ID_EXE  <=      DIV_ID;
-       MFHL_ID_EXE  <=     MFHL_ID;
-       MTHL_ID_EXE  <=     MTHL_ID;
-         LB_ID_EXE  <=       LB_ID;
-        LBU_ID_EXE  <=      LBU_ID;
-         LH_ID_EXE  <=       LH_ID;
-        LHU_ID_EXE  <=      LHU_ID;
-         LW_ID_EXE  <=       LW_ID;
-         SW_ID_EXE  <=       SW_ID;
-         SB_ID_EXE  <=       SB_ID;
-         SH_ID_EXE  <=       SH_ID;
-       mfc0_ID_EXE  <=     mfc0_ID;
-
-
-    // data transfering to EXE stage
-//        Rt_ID_EXE        <= rt;
-//       Rd_ID_EXE        <= rd;
-    RegWaddr_ID_EXE  <=          RegWaddr_ID;
-    Sa_ID_EXE        <=                Sa_ID;
-    PC_ID_EXE        <=             PC_IF_ID;
-    PC_add_4_ID_EXE  <=       PC_add_4_IF_ID;
-    RegRdata1_ID_EXE <=   RegRdata1_Final_ID;
-    RegRdata2_ID_EXE <=   RegRdata2_Final_ID;
-    SgnExtend_ID_EXE <=         SgnExtend_ID;
-      ZExtend_ID_EXE <=           ZExtend_ID;
-     cp0Rdata_ID_EXE <=          cp0Rdata_ID;
+      MemEn_ID_EXE     <=             MemEn_ID;
+      MemToReg_ID_EXE  <=          MemToReg_ID;
+      ALUop_ID_EXE     <=             ALUop_ID;
+      RegWrite_ID_EXE  <=          RegWrite_ID;
+      MemWrite_ID_EXE  <=          MemWrite_ID;
+      ALUSrcA_ID_EXE   <=           ALUSrcA_ID;
+      ALUSrcB_ID_EXE   <=           ALUSrcB_ID;
+         MULT_ID_EXE   <=              MULT_ID;
+          DIV_ID_EXE   <=               DIV_ID;
+         MFHL_ID_EXE   <=              MFHL_ID;
+         MTHL_ID_EXE   <=              MTHL_ID;
+           LB_ID_EXE   <=                LB_ID;
+          LBU_ID_EXE   <=               LBU_ID;
+           LH_ID_EXE   <=                LH_ID;
+          LHU_ID_EXE   <=               LHU_ID;
+           LW_ID_EXE   <=                LW_ID;
+           SW_ID_EXE   <=                SW_ID;
+           SB_ID_EXE   <=                SB_ID;
+           SH_ID_EXE   <=                SH_ID;
+         mfc0_ID_EXE   <=              mfc0_ID;
+      // data transfering to EXE stage
+       RegWaddr_ID_EXE <=          RegWaddr_ID;
+             Sa_ID_EXE <=                Sa_ID;
+             PC_ID_EXE <=             PC_IF_ID;
+       PC_add_4_ID_EXE <=       PC_add_4_IF_ID;
+      RegRdata1_ID_EXE <=   RegRdata1_Final_ID;
+      RegRdata2_ID_EXE <=   RegRdata2_Final_ID;
+      SgnExtend_ID_EXE <=         SgnExtend_ID;
+        ZExtend_ID_EXE <=           ZExtend_ID;
+       cp0Rdata_ID_EXE <=          cp0Rdata_ID;
     end
     end
 
@@ -334,7 +304,8 @@ module decode_stage(
         .mfc0      (          mfc0_ID),
         .trap      (          trap_ID),
         .eret      (          eret_ID),
-        .cp0_Write (        cp0_Write)
+        .cp0_Write (        cp0_Write),
+        .is_signed (     is_signed_ID)
 
     );
     MUX_4_32 RegRdata1_MUX(
@@ -360,13 +331,15 @@ module decode_stage(
         .op     (    RegDst_ID),
         .Result (  RegWaddr_ID)
     );
-wire [31:0] MULT_HI_LO = {32{MFHL_ID_EXE_1[1]}}  & MULT_Result[63:32] | {32{MFHL_ID_EXE_1[0]}}  & MULT_Result[31:0];
-wire [31:0]  EXE_HI_LO = {32{MFHL_ID_EXE_1[1]}}  & HI                 | {32{MFHL_ID_EXE_1[0]}}  & LO;
-wire [31:0]  MEM_HI_LO = {32{MFHL_EXE_MEM[1]}}   & HI                 | {32{MFHL_EXE_MEM[0]}}   & LO;
-wire [31:0]   WB_HI_LO = {32{MFHL_MEM_WB[1]}}    & HI                 | {32{MFHL_MEM_WB[0]}}    & LO;
-assign ID_EXE_data  =  |MFHL_ID_EXE  ? (MULT_EXE_MEM ? MULT_HI_LO : EXE_HI_LO) : Bypass_EXE;
-assign EXE_MEM_data =  |MFHL_EXE_MEM ? MEM_HI_LO : Bypass_MEM;
-assign MEM_WB_data  =  |MFHL_MEM_WB  ?  WB_HI_LO : RegWdata_WB;
+  wire [31:0] MULT_HI_LO = {32{MFHL_ID_EXE_1[1]}}  & MULT_Result[63:32] | {32{MFHL_ID_EXE_1[0]}}  & MULT_Result[31:0];
+  wire [31:0]  EXE_HI_LO = {32{MFHL_ID_EXE_1[1]}}  & HI                 | {32{MFHL_ID_EXE_1[0]}}  & LO;
+  wire [31:0]  MEM_HI_LO = {32{MFHL_EXE_MEM[1]}}   & HI                 | {32{MFHL_EXE_MEM[0]}}   & LO;
+  wire [31:0]   WB_HI_LO = {32{MFHL_MEM_WB[1]}}    & HI                 | {32{MFHL_MEM_WB[0]}}    & LO;
+
+  assign ID_EXE_data  =  |MFHL_ID_EXE  ? (MULT_EXE_MEM ? MULT_HI_LO : EXE_HI_LO) : Bypass_EXE;
+  assign EXE_MEM_data =  |MFHL_EXE_MEM ? MEM_HI_LO : Bypass_MEM;
+  assign MEM_WB_data  =  |MFHL_MEM_WB  ?  WB_HI_LO : RegWdata_WB;
+
 endmodule //decode_stage
 
 module Branch_Cond(
@@ -376,19 +349,13 @@ module Branch_Cond(
     output       Cond
 );
 	wire zero, ge, gt, le, lt;
-/*    ALU Zero(
-        .A     (      A),
-        .B     (      B),
-        .ALUop (4'b0110),   //SUB
-        .Zero  (   zero)
-    ); */
-    assign zero = ~(|(A - B));
-    assign ge = ~A[31];
-    assign gt = ~A[31] &    |A[30:0];
-    assign le =  A[31] | (&(~A[31:0]));
-    assign lt =  A[31];
+  assign zero = ~(|(A - B));
+  assign ge = ~A[31];
+  assign gt = ~A[31] &    |A[30:0];
+  assign le =  A[31] | (&(~A[31:0]));
+  assign lt =  A[31];
 
-    assign Cond = ((B_Type[0] & ~zero | B_Type[1] & zero) | (B_Type[2] & ge | B_Type[3] & gt)) | (B_Type[4] & le | B_Type[5] & lt);
+  assign Cond = ((B_Type[0] & ~zero | B_Type[1] & zero) | (B_Type[2] & ge | B_Type[3] & gt)) | (B_Type[4] & le | B_Type[5] & lt);
 
 
 endmodule

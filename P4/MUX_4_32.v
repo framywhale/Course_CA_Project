@@ -1,3 +1,13 @@
+/*----------------------------------------------------------------*
+// Filename      :  MUX_4_32.v
+// Description   :  5 pipelined CPU MUX 
+// Author        :  Gou Lingrui & Wu Jiahao
+// Email         :  wujiahao15@mails.ucas.ac.cn
+// Created Time  :  2017-10-11 21:04:12
+// Modified Time :  2017-11-17 17:35:21
+//----------------------------------------------------------------*/
+
+`timescale 10ns / 1ns
 module MUX_4_32(
     input  [31:0] Src1,
     input  [31:0] Src2,

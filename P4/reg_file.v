@@ -1,13 +1,16 @@
-`ifdef PRJ1_FPGA_IMPL
-	// the board does not have enough GPIO, so we implement 4 4-bit registers
-    `define DATA_WIDTH 4
-	`define ADDR_WIDTH 2
-`else
-    `define DATA_WIDTH 32
-	`define ADDR_WIDTH 5
-`endif
+/*----------------------------------------------------------------*
+// Filename      :  reg_file.v
+// Description   :  5 pipelined CPU general register files
+// Author        :  Gou Lingrui & Wu Jiahao
+// Email         :  wujiahao15@mails.ucas.ac.cn
+// Created Time  :  2017-10-11 21:04:12
+// Modified Time :  2017-11-17 17:35:21
+//----------------------------------------------------------------*/
 
 `timescale 10ns / 1ns
+
+`define DATA_WIDTH 32
+`define ADDR_WIDTH 5
 
 module reg_file(
 	input clk,

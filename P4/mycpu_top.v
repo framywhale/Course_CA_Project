@@ -1,39 +1,14 @@
-/*
-  ------------------------------------------------------------------------------
-  --------------------------------------------------------------------------------
-  Copyright (c) 2016, Loongson Technology Corporation Limited.
-
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without modification,
-  are permitted provided that the following conditions are met:
-
-  1. Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-  2. Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation and/or
-  other materials provided with the distribution.
-
-  3. Neither the name of Loongson Technology Corporation Limited nor the names of
-  its contributors may be used to endorse or promote products derived from this
-  software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  DISCLAIMED. IN NO EVENT SHALL LOONGSON TECHNOLOGY CORPORATION LIMITED BE LIABLE
-  TO ANY PARTY FOR DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  --------------------------------------------------------------------------------
-  --------------------------------------------------------------------------------
- */
+/*----------------------------------------------------------------*
+// Filename      :  mycpu_top.v
+// Description   :  5 pipelined CPU top
+// Author        :  Gou Lingrui & Wu Jiahao
+// Email         :  wujiahao15@mails.ucas.ac.cn
+// Created Time  :  2017-10-11 21:04:12
+// Modified Time :  2017-11-17 17:35:21
+//----------------------------------------------------------------*/
 
 `define SIMU_DEBUG
+`timescale 10ns / 1ns
 
 module mycpu_top(
     input  wire        clk,
@@ -63,8 +38,7 @@ module mycpu_top(
 assign inst_sram_wen   = 4'b0;
 assign inst_sram_wdata = 32'b0;
 
-wire   rst;
-assign rst = ~resetn;
+wire rst = ~resetn;
 
 wire         JSrc;
 wire [ 1:0] PCSrc;
@@ -102,23 +76,22 @@ wire [ 1:0]    ALUSrcB_ID_EXE;
 wire [ 3:0]      ALUop_ID_EXE;
 wire [ 3:0]   RegWrite_ID_EXE;
 wire [ 3:0]   MemWrite_ID_EXE;
+wire         is_signed_ID_EXE;
 wire             MemEn_ID_EXE;
 wire          MemToReg_ID_EXE;
 wire [ 1:0]       MULT_ID_EXE;
 wire [ 1:0]        DIV_ID_EXE;
 wire [ 1:0]       MFHL_ID_EXE;
 wire [ 1:0]       MTHL_ID_EXE;
-wire                LB_ID_EXE; //new
-wire               LBU_ID_EXE; //new
-wire                LH_ID_EXE; //new
-wire               LHU_ID_EXE; //new
-wire [ 1:0]         LW_ID_EXE; //new
-wire [ 1:0]         SW_ID_EXE; //new
-wire                SB_ID_EXE; //new
-wire                SH_ID_EXE; //new
+wire                LB_ID_EXE; 
+wire               LBU_ID_EXE; 
+wire                LH_ID_EXE; 
+wire               LHU_ID_EXE; 
+wire [ 1:0]         LW_ID_EXE; 
+wire [ 1:0]         SW_ID_EXE; 
+wire                SB_ID_EXE; 
+wire                SH_ID_EXE; 
 
-//wire [ 4:0]         Rt_ID_EXE;
-//wire [ 4:0]         Rd_ID_EXE;
 wire [ 4:0]   RegWaddr_ID_EXE;
 wire [31:0]     ALUResult_EXE;
 wire [31:0]     ALUResult_MEM;
@@ -133,16 +106,16 @@ wire            MemEn_EXE_MEM;
 wire         MemToReg_EXE_MEM;
 wire [ 3:0]  MemWrite_EXE_MEM;
 wire [ 3:0]  RegWrite_EXE_MEM;
-wire [ 3:0]      RegWrite_EXE; //new
+wire [ 3:0]      RegWrite_EXE;
 wire [ 4:0]  RegWaddr_EXE_MEM;
 wire [ 1:0]      MULT_EXE_MEM;
 wire [ 1:0]      MFHL_EXE_MEM;
 wire [ 1:0]      MTHL_EXE_MEM;
-wire               LB_EXE_MEM; //new
-wire              LBU_EXE_MEM; //new
-wire               LH_EXE_MEM; //new
-wire              LHU_EXE_MEM; //new
-wire [ 1:0]        LW_EXE_MEM; //new
+wire               LB_EXE_MEM; 
+wire              LBU_EXE_MEM; 
+wire               LH_EXE_MEM; 
+wire              LHU_EXE_MEM; 
+wire [ 1:0]        LW_EXE_MEM; 
 wire [31:0] ALUResult_EXE_MEM;
 wire [31:0]  MemWdata_EXE_MEM;
 wire [31:0]        PC_EXE_MEM;
@@ -153,15 +126,15 @@ wire          MemToReg_MEM_WB;
 wire [ 3:0]   RegWrite_MEM_WB;
 wire [ 4:0]   RegWaddr_MEM_WB;
 wire [ 1:0]       MFHL_MEM_WB;
-wire                LB_MEM_WB; //new
-wire               LBU_MEM_WB; //new
-wire                LH_MEM_WB; //new
-wire               LHU_MEM_WB; //new
-wire [ 1:0]         LW_MEM_WB; //new
+wire                LB_MEM_WB; 
+wire               LBU_MEM_WB; 
+wire                LH_MEM_WB; 
+wire               LHU_MEM_WB; 
+wire [ 1:0]         LW_MEM_WB; 
 
 
 wire [31:0]  ALUResult_MEM_WB;
-wire [31:0]  RegRdata2_MEM_WB; //new
+wire [31:0]  RegRdata2_MEM_WB;
 //wire [31:0]   MemRdata_MEM_WB;
 wire [31:0]         PC_MEM_WB;
 wire [31:0]             PC_WB;
@@ -202,9 +175,9 @@ wire [31:0] RegRdata2_Final;
 wire [31:0] cp0Rdata_ID_EXE;
 wire [31:0] cp0Rdata_EXE_MEM;
 wire [31:0] cp0Rdata_MEM_WB;
-wire mfc0_ID_EXE;
-wire mfc0_EXE_MEM;
-wire mfc0_MEM_WB;
+wire           mfc0_ID_EXE;
+wire           mfc0_EXE_MEM;
+wire           mfc0_MEM_WB;
 
 wire realtrap;
 
@@ -220,7 +193,6 @@ nextpc_gen nextpc_gen(
     .trap              (          realtrap), // I  1
     .eret              (           is_eret), // I  1
     .epc               (               epc), // I 32
-//    .inst_addr         (          PC_next), // I 32
     .JR_target         (      JR_target_ID), // I 32
     .J_target          (       J_target_ID), // I 32
     .Br_addr           (      Br_target_ID), // I 32
@@ -243,75 +215,75 @@ fetch_stage fe_stage(
 
 
 decode_stage de_stage(
-    .clk               (              clk), // I  1
-    .rst               (              rst), // I  1
-    .Inst_IF_ID        (       Inst_IF_ID), // I 32
-    .PC_IF_ID          (         PC_IF_ID), // I 32
-    .PC_add_4_IF_ID    (   PC_add_4_IF_ID), // I 32
-    .RegRaddr1_ID      (        RegRaddr1), // O  5
-    .RegRaddr2_ID      (        RegRaddr2), // O  5
-    .RegRdata1_ID      (        RegRdata1), // I 32
-    .RegRdata2_ID      (        RegRdata2), // I 32
-    .cp0Rdata_ID       (         CP0Rdata), // I 32 
-    .Bypass_EXE        (       Bypass_EXE), // I 32 Bypass
-    .Bypass_MEM        (       Bypass_MEM), // I 32 Bypass
+    .clk               (               clk), // I  1
+    .rst               (               rst), // I  1
+    .Inst_IF_ID        (        Inst_IF_ID), // I 32
+    .PC_IF_ID          (          PC_IF_ID), // I 32
+    .PC_add_4_IF_ID    (    PC_add_4_IF_ID), // I 32
+    .RegRaddr1_ID      (         RegRaddr1), // O  5
+    .RegRaddr2_ID      (         RegRaddr2), // O  5
+    .RegRdata1_ID      (         RegRdata1), // I 32
+    .RegRdata2_ID      (         RegRdata2), // I 32
+    .cp0Rdata_ID       (          CP0Rdata), // I 32 
+    .Bypass_EXE        (        Bypass_EXE), // I 32 Bypass
+    .Bypass_MEM        (        Bypass_MEM), // I 32 Bypass
     .RegWdata_WB       (RegWdata_Bypass_WB), // I 32 Bypass
-    .MULT_Result       (      MULT_Result), // I 64 Bypass
-    .HI                (           HI_out), // I 32 Bypass
-    .LO                (           LO_out), // I 32 Bypass
-    .MFHL_ID_EXE_1     (      MFHL_ID_EXE), // I  2 Bypass
-    .MFHL_EXE_MEM      (     MFHL_EXE_MEM), // I  2 Bypass
-    .MFHL_MEM_WB       (      MFHL_MEM_WB), // I  2 Bypass
-    .MULT_EXE_MEM      (     MULT_EXE_MEM), // I  2 Bypass
-    .RegRdata1_src     (    RegRdata1_src), // I  2 Bypass
-    .RegRdata2_src     (    RegRdata2_src), // I  2 Bypass
-    .ID_EXE_Stall      (     ID_EXE_Stall), // I  1 Stall
-    .DIV_Complete      (     DIV_Complete), // I  1 Stall
-    .JSrc              (             JSrc), // O  1
-    .PCSrc             (            PCSrc), // O  2
-    .J_target_ID       (      J_target_ID), // O 32
-    .JR_target_ID      (     JR_target_ID), // O 32
-    .Br_target_ID      (     Br_target_ID), // O 32
-//    .RegDst_ID_EXE     (    RegDst_ID_EXE), // O  2
-    .ALUSrcA_ID_EXE    (   ALUSrcA_ID_EXE), // O  2
-    .ALUSrcB_ID_EXE    (   ALUSrcB_ID_EXE), // O  2
-    .ALUop_ID_EXE      (     ALUop_ID_EXE), // O  4
-    .RegWrite_ID_EXE   (  RegWrite_ID_EXE), // O  4
-    .MemWrite_ID_EXE   (  MemWrite_ID_EXE), // O  4
-    .MemEn_ID_EXE      (     MemEn_ID_EXE), // O  1
-    .MemToReg_ID_EXE   (  MemToReg_ID_EXE), // O  1
-    .MULT_ID_EXE       (      MULT_ID_EXE), // O  2
-    .DIV_ID_EXE        (       DIV_ID_EXE), // O  2
-    .MFHL_ID_EXE       (      MFHL_ID_EXE), // O  2
-    .MTHL_ID_EXE       (      MTHL_ID_EXE), // O  2
-    .LB_ID_EXE         (        LB_ID_EXE), // O  1 new
-    .LBU_ID_EXE        (       LBU_ID_EXE), // O  1 new
-    .LH_ID_EXE         (        LH_ID_EXE), // O  1 new
-    .LHU_ID_EXE        (       LHU_ID_EXE), // O  1 new
-    .LW_ID_EXE         (        LW_ID_EXE), // O  2 new
-    .SW_ID_EXE         (        SW_ID_EXE), // O  2 new
-    .SB_ID_EXE         (        SB_ID_EXE), // O  1 new
-    .SH_ID_EXE         (        SH_ID_EXE), // O  1 new
-//    .Rt_ID_EXE         (        Rt_ID_EXE), // O  5
-//    .Rd_ID_EXE         (        Rd_ID_EXE), // O  5
-    .RegWaddr_ID_EXE   (  RegWaddr_ID_EXE), // O  5
-    .PC_add_4_ID_EXE   (  PC_add_4_ID_EXE), // O 32
-    .PC_ID_EXE         (        PC_ID_EXE), // O 32
-    .RegRdata1_ID_EXE  ( RegRdata1_ID_EXE), // O 32
-    .RegRdata2_ID_EXE  ( RegRdata2_ID_EXE), // O 32
-    .Sa_ID_EXE         (        Sa_ID_EXE), // O 32
-    .SgnExtend_ID_EXE  ( SgnExtend_ID_EXE), // O 32
-    .ZExtend_ID_EXE    (   ZExtend_ID_EXE), // O 32
+    .MULT_Result       (       MULT_Result), // I 64 Bypass
+    .HI                (            HI_out), // I 32 Bypass
+    .LO                (            LO_out), // I 32 Bypass
+    .MFHL_ID_EXE_1     (       MFHL_ID_EXE), // I  2 Bypass
+    .MFHL_EXE_MEM      (      MFHL_EXE_MEM), // I  2 Bypass
+    .MFHL_MEM_WB       (       MFHL_MEM_WB), // I  2 Bypass
+    .MULT_EXE_MEM      (      MULT_EXE_MEM), // I  2 Bypass
+    .RegRdata1_src     (     RegRdata1_src), // I  2 Bypass
+    .RegRdata2_src     (     RegRdata2_src), // I  2 Bypass
+    .ID_EXE_Stall      (      ID_EXE_Stall), // I  1 Stall
+    .DIV_Complete      (      DIV_Complete), // I  1 Stall
+    .JSrc              (              JSrc), // O  1
+    .PCSrc             (             PCSrc), // O  2
+    .J_target_ID       (       J_target_ID), // O 32
+    .JR_target_ID      (      JR_target_ID), // O 32
+    .Br_target_ID      (      Br_target_ID), // O 32
 
-    .is_rs_read_ID     (       is_rs_read), // O  1
-    .is_rt_read_ID     (       is_rt_read), // O  1
-    .eret_ID           (          is_eret), // O  1
-    .trap_ID           (          is_trap), // O  1
-    .cp0_Write         (         CP0Write), // O  1
-    .rd                (               rd), // O  5
-    .RegRdata2_Final_ID(  RegRdata2_Final), // O 32
-    .mfc0_ID_EXE       (      mfc0_ID_EXE), // O  1
-    .cp0Rdata_ID_EXE   (  cp0Rdata_ID_EXE)  // O 32
+    .ALUSrcA_ID_EXE    (    ALUSrcA_ID_EXE), // O  2
+    .ALUSrcB_ID_EXE    (    ALUSrcB_ID_EXE), // O  2
+    .ALUop_ID_EXE      (      ALUop_ID_EXE), // O  4
+    .RegWrite_ID_EXE   (   RegWrite_ID_EXE), // O  4
+    .MemWrite_ID_EXE   (   MemWrite_ID_EXE), // O  4
+    .MemEn_ID_EXE      (      MemEn_ID_EXE), // O  1
+    .MemToReg_ID_EXE   (   MemToReg_ID_EXE), // O  1
+    .is_signed_ID_EXE  (  is_signed_ID_EXE), // O  1  help ALU to judge Overflow
+    .MULT_ID_EXE       (       MULT_ID_EXE), // O  2
+    .DIV_ID_EXE        (        DIV_ID_EXE), // O  2
+    .MFHL_ID_EXE       (       MFHL_ID_EXE), // O  2
+    .MTHL_ID_EXE       (       MTHL_ID_EXE), // O  2
+    .LB_ID_EXE         (         LB_ID_EXE), // O  1 
+    .LBU_ID_EXE        (        LBU_ID_EXE), // O  1 
+    .LH_ID_EXE         (         LH_ID_EXE), // O  1 
+    .LHU_ID_EXE        (        LHU_ID_EXE), // O  1 
+    .LW_ID_EXE         (         LW_ID_EXE), // O  2 
+    .SW_ID_EXE         (         SW_ID_EXE), // O  2 
+    .SB_ID_EXE         (         SB_ID_EXE), // O  1 
+    .SH_ID_EXE         (         SH_ID_EXE), // O  1 
+
+    .RegWaddr_ID_EXE   (   RegWaddr_ID_EXE), // O  5
+    .PC_add_4_ID_EXE   (   PC_add_4_ID_EXE), // O 32
+    .PC_ID_EXE         (         PC_ID_EXE), // O 32
+    .RegRdata1_ID_EXE  (  RegRdata1_ID_EXE), // O 32
+    .RegRdata2_ID_EXE  (  RegRdata2_ID_EXE), // O 32
+    .Sa_ID_EXE         (         Sa_ID_EXE), // O 32
+    .SgnExtend_ID_EXE  (  SgnExtend_ID_EXE), // O 32
+    .ZExtend_ID_EXE    (    ZExtend_ID_EXE), // O 32
+
+    .is_rs_read_ID     (        is_rs_read), // O  1
+    .is_rt_read_ID     (        is_rt_read), // O  1
+    .eret_ID           (           is_eret), // O  1
+    .trap_ID           (           is_trap), // O  1
+    .cp0_Write         (          CP0Write), // O  1
+    .rd                (                rd), // O  5
+    .RegRdata2_Final_ID(   RegRdata2_Final), // O 32
+    .mfc0_ID_EXE       (       mfc0_ID_EXE), // O  1
+    .cp0Rdata_ID_EXE   (   cp0Rdata_ID_EXE)  // O 32
   );
 
 
@@ -325,12 +297,10 @@ execute_stage exe_stage(
     .Sa_ID_EXE         (        Sa_ID_EXE), // I 32
     .SgnExtend_ID_EXE  ( SgnExtend_ID_EXE), // I 32
     .ZExtend_ID_EXE    (   ZExtend_ID_EXE), // I 32
-//    .Rt_ID_EXE         (        Rt_ID_EXE), // I  5
-//    .Rd_ID_EXE         (        Rd_ID_EXE), // I  5
     .RegWaddr_ID_EXE   (  RegWaddr_ID_EXE), // I  5
     .MemEn_ID_EXE      (     MemEn_ID_EXE), // I  1
     .MemToReg_ID_EXE   (  MemToReg_ID_EXE), // I  1
-//    .RegDst_ID_EXE     (    RegDst_ID_EXE), // I  2
+    .is_signed_ID_EXE  ( is_signed_ID_EXE), // I  1 help ALU to judge Overflow
     .ALUSrcA_ID_EXE    (   ALUSrcA_ID_EXE), // I  2
     .ALUSrcB_ID_EXE    (   ALUSrcB_ID_EXE), // I  2
     .ALUop_ID_EXE      (     ALUop_ID_EXE), // I  4
@@ -339,40 +309,38 @@ execute_stage exe_stage(
     .MULT_ID_EXE       (      MULT_ID_EXE), // I  2
     .MFHL_ID_EXE       (      MFHL_ID_EXE), // I  2
     .MTHL_ID_EXE       (      MTHL_ID_EXE), // I  2
-    .LB_ID_EXE         (        LB_ID_EXE), // I  1 new
-    .LBU_ID_EXE        (       LBU_ID_EXE), // I  1 new
-    .LH_ID_EXE         (        LH_ID_EXE), // I  1 new
-    .LHU_ID_EXE        (       LHU_ID_EXE), // I  1 new
-    .LW_ID_EXE         (        LW_ID_EXE), // I  2 new
-    .SW_ID_EXE         (        SW_ID_EXE), // I  2 new
-    .SB_ID_EXE         (        SB_ID_EXE), // I  1 new
-    .SH_ID_EXE         (        SH_ID_EXE), // I  1 new
+    .LB_ID_EXE         (        LB_ID_EXE), // I  1 
+    .LBU_ID_EXE        (       LBU_ID_EXE), // I  1 
+    .LH_ID_EXE         (        LH_ID_EXE), // I  1 
+    .LHU_ID_EXE        (       LHU_ID_EXE), // I  1 
+    .LW_ID_EXE         (        LW_ID_EXE), // I  2 
+    .SW_ID_EXE         (        SW_ID_EXE), // I  2 
+    .SB_ID_EXE         (        SB_ID_EXE), // I  1 
+    .SH_ID_EXE         (        SH_ID_EXE), // I  1 
     .MemEn_EXE_MEM     (    MemEn_EXE_MEM), // O  1
     .MemToReg_EXE_MEM  ( MemToReg_EXE_MEM), // O  1
     .MemWrite_EXE_MEM  ( MemWrite_EXE_MEM), // O  4
     .RegWrite_EXE_MEM  ( RegWrite_EXE_MEM), // O  4
- //   .RegWrite_EXE      (     RegWrite_EXE), // O  4 new
     .MULT_EXE_MEM      (     MULT_EXE_MEM), // O  2
     .MFHL_EXE_MEM      (     MFHL_EXE_MEM), // O  2
     .MTHL_EXE_MEM      (     MTHL_EXE_MEM), // O  2
-    .LB_EXE_MEM        (       LB_EXE_MEM), // O  1 new
-    .LBU_EXE_MEM       (      LBU_EXE_MEM), // O  1 new
-    .LH_EXE_MEM        (       LH_EXE_MEM), // O  1 new
-    .LHU_EXE_MEM       (      LHU_EXE_MEM), // O  1 new
-    .LW_EXE_MEM        (       LW_EXE_MEM), // O  2 new
+    .LB_EXE_MEM        (       LB_EXE_MEM), // O  1 
+    .LBU_EXE_MEM       (      LBU_EXE_MEM), // O  1 
+    .LH_EXE_MEM        (       LH_EXE_MEM), // O  1 
+    .LHU_EXE_MEM       (      LHU_EXE_MEM), // O  1 
+    .LW_EXE_MEM        (       LW_EXE_MEM), // O  2 
     .RegWaddr_EXE_MEM  ( RegWaddr_EXE_MEM), // O  5
     .ALUResult_EXE_MEM (ALUResult_EXE_MEM), // O 32
     .MemWdata_EXE_MEM  ( MemWdata_EXE_MEM), // O 32
     .PC_EXE_MEM        (       PC_EXE_MEM), // O 32
     .RegRdata1_EXE_MEM (RegRdata1_EXE_MEM), // O 32
-    .RegRdata2_EXE_MEM (RegRdata2_EXE_MEM), // O 32 new
+    .RegRdata2_EXE_MEM (RegRdata2_EXE_MEM), // O 32 
     .Bypass_EXE        (       Bypass_EXE), // O 32
 
     .cp0Rdata_ID_EXE   (  cp0Rdata_ID_EXE), // I 32
     .mfc0_ID_EXE       (      mfc0_ID_EXE), // I  1
     .mfc0_EXE_MEM      (     mfc0_EXE_MEM), // O  1
-    .cp0Rdata_EXE_MEM  ( cp0Rdata_EXE_MEM)  // O 32
-     
+    .cp0Rdata_EXE_MEM  ( cp0Rdata_EXE_MEM)  // O 32    
     );
 
 
@@ -386,32 +354,32 @@ memory_stage mem_stage(
     .RegWaddr_EXE_MEM  ( RegWaddr_EXE_MEM), // I  5
     .ALUResult_EXE_MEM (ALUResult_EXE_MEM), // I 32
     .MemWdata_EXE_MEM  ( MemWdata_EXE_MEM), // I 32
-    .RegRdata2_EXE_MEM (RegRdata2_EXE_MEM), // I 32 new
+    .RegRdata2_EXE_MEM (RegRdata2_EXE_MEM), // I 32 
     .PC_EXE_MEM        (       PC_EXE_MEM), // I 32
     .MFHL_EXE_MEM      (     MFHL_EXE_MEM), // I  2
-    .LB_EXE_MEM        (       LB_EXE_MEM), // I  1 new
-    .LBU_EXE_MEM       (      LBU_EXE_MEM), // I  1 new
-    .LH_EXE_MEM        (       LH_EXE_MEM), // I  1 new
-    .LHU_EXE_MEM       (      LHU_EXE_MEM), // I  1 new
-    .LW_EXE_MEM        (       LW_EXE_MEM), // I  2 new
+    .LB_EXE_MEM        (       LB_EXE_MEM), // I  1 
+    .LBU_EXE_MEM       (      LBU_EXE_MEM), // I  1 
+    .LH_EXE_MEM        (       LH_EXE_MEM), // I  1 
+    .LHU_EXE_MEM       (      LHU_EXE_MEM), // I  1 
+    .LW_EXE_MEM        (       LW_EXE_MEM), // I  2 
     .MemEn_MEM         (     data_sram_en), // O  1
     .MemWrite_MEM      (    data_sram_wen), // O  4
     .data_sram_addr    (   data_sram_addr), // O 32
-//    .data_sram_rdata   (  data_sram_rdata), // I 32
+
     .MemWdata_MEM      (  data_sram_wdata), // O 32
     .MemToReg_MEM_WB   (  MemToReg_MEM_WB), // O  1
     .RegWrite_MEM_WB   (  RegWrite_MEM_WB), // O  4
-    .LB_MEM_WB         (        LB_MEM_WB), // O  1 new
-    .LBU_MEM_WB        (       LBU_MEM_WB), // O  1 new
-    .LH_MEM_WB         (        LH_MEM_WB), // O  1 new
-    .LHU_MEM_WB        (       LHU_MEM_WB), // O  1 new
-    .LW_MEM_WB         (        LW_MEM_WB), // O  2 new
+    .LB_MEM_WB         (        LB_MEM_WB), // O  1 
+    .LBU_MEM_WB        (       LBU_MEM_WB), // O  1 
+    .LH_MEM_WB         (        LH_MEM_WB), // O  1 
+    .LHU_MEM_WB        (       LHU_MEM_WB), // O  1 
+    .LW_MEM_WB         (        LW_MEM_WB), // O  2 
     .RegWaddr_MEM_WB   (  RegWaddr_MEM_WB), // O  5
     .ALUResult_MEM_WB  ( ALUResult_MEM_WB), // O 32
-    .RegRdata2_MEM_WB  ( RegRdata2_MEM_WB), // O 32 new
+    .RegRdata2_MEM_WB  ( RegRdata2_MEM_WB), // O 32 
     .PC_MEM_WB         (        PC_MEM_WB), // O 32
     .MFHL_MEM_WB       (      MFHL_MEM_WB), // O  2
-//    .MemRdata_MEM_WB   (  MemRdata_MEM_WB)  // O 32
+
     .Bypass_MEM        (       Bypass_MEM), // O 32
     
     .cp0Rdata_MEM_WB   (  cp0Rdata_MEM_WB), // O 32
@@ -427,14 +395,14 @@ writeback_stage wb_stage(
     .MemToReg_MEM_WB   (  MemToReg_MEM_WB), // I  1
     .RegWrite_MEM_WB   (  RegWrite_MEM_WB), // I  4
     .MFHL_MEM_WB       (      MFHL_MEM_WB), // I  2
-    .LB_MEM_WB         (        LB_MEM_WB), // I  1 new
-    .LBU_MEM_WB        (       LBU_MEM_WB), // I  1 new
-    .LH_MEM_WB         (        LH_MEM_WB), // I  1 new
-    .LHU_MEM_WB        (       LHU_MEM_WB), // I  1 new
-    .LW_MEM_WB         (        LW_MEM_WB), // I  2 new
+    .LB_MEM_WB         (        LB_MEM_WB), // I  1 
+    .LBU_MEM_WB        (       LBU_MEM_WB), // I  1 
+    .LH_MEM_WB         (        LH_MEM_WB), // I  1 
+    .LHU_MEM_WB        (       LHU_MEM_WB), // I  1 
+    .LW_MEM_WB         (        LW_MEM_WB), // I  2 
     .RegWaddr_MEM_WB   (  RegWaddr_MEM_WB), // I  5
     .ALUResult_MEM_WB  ( ALUResult_MEM_WB), // I 32
-    .RegRdata2_MEM_WB  ( RegRdata2_MEM_WB), // I 32 new
+    .RegRdata2_MEM_WB  ( RegRdata2_MEM_WB), // I 32
     .MemRdata_MEM_WB   (  data_sram_rdata), // I 32
     .PC_MEM_WB         (        PC_MEM_WB), // I 32
     .HI_MEM_WB         (           HI_out), // I 32
@@ -479,8 +447,7 @@ Bypass_Unit bypass_unit(
     .ID_EXE_Stall       (     ID_EXE_Stall),
     // output the real read data in ID stage
     .RegRdata1_src      (    RegRdata1_src),
-    .RegRdata2_src      (    RegRdata2_src),
-    
+    .RegRdata2_src      (    RegRdata2_src),   
     .trap               (          is_trap),
     .realtrap           (         realtrap)
 );
@@ -512,36 +479,36 @@ cp0reg cp0(
 );
 
 multiplyer mul(
-    .x          (RegRdata1_ID_EXE),
-    .y          (RegRdata2_ID_EXE),
-    .mul_clk    (clk),
-    .resetn     (resetn),
-    .clken      (|MULT_ID_EXE),
+    .x          (              RegRdata1_ID_EXE),
+    .y          (              RegRdata2_ID_EXE),
+    .mul_clk    (                           clk),
+    .resetn     (                        resetn),
+    .clken      (                  |MULT_ID_EXE),
     .mul_signed (MULT_ID_EXE[0]&~MULT_ID_EXE[1]),
-    .result     (MULT_Result)
+    .result     (                   MULT_Result)
 );
 
 divider div(
-    .div_clk        (clk),
-    .rst        (rst),
-    .x   (RegRdata1_ID_EXE),
-    .y   (RegRdata2_ID_EXE),
-    .div        (|DIV_ID_EXE),
-    .div_signed (DIV_ID_EXE[0]&~DIV_ID_EXE[1]),
-    .s  (DIV_quotient),
-    .r  (DIV_remainder),
-    .busy       (DIV_Busy),
-    .complete   (DIV_Complete)
+    .div_clk    (                           clk),
+    .rst        (                           rst),
+    .x          (              RegRdata1_ID_EXE),
+    .y          (              RegRdata2_ID_EXE),
+    .div        (                   |DIV_ID_EXE),
+    .div_signed (  DIV_ID_EXE[0]&~DIV_ID_EXE[1]),
+    .s          (                  DIV_quotient),
+    .r          (                 DIV_remainder),
+    .busy       (                      DIV_Busy),
+    .complete   (                  DIV_Complete)
 );
 
 HILO HILO(
-    .clk        (clk),
-    .rst        (rst),
-    .HI_in      (HI_in),
-    .LO_in      (LO_in),
-    .HILO_Write (HILO_Write),
-    .HI_out     (HI_out),
-    .LO_out     (LO_out)
+    .clk        (                           clk),
+    .rst        (                           rst),
+    .HI_in      (                         HI_in),
+    .LO_in      (                         LO_in),
+    .HILO_Write (                    HILO_Write),
+    .HI_out     (                        HI_out),
+    .LO_out     (                        LO_out)
 );
 
 

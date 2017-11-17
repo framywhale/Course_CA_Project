@@ -1,3 +1,13 @@
+/*----------------------------------------------------------------*
+// Filename      :  HILO.v
+// Description   :  5 pipelined CPU HILO registers
+// Author        :  Gou Lingrui & Wu Jiahao
+// Email         :  wujiahao15@mails.ucas.ac.cn
+// Created Time  :  2017-10-11 21:04:12
+// Modified Time :  2017-11-17 17:35:21
+//----------------------------------------------------------------*/
+
+`timescale 10ns / 1ns
 module HILO(
     input clk,
     input rst,

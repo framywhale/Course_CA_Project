@@ -1,38 +1,13 @@
-/*
-  ------------------------------------------------------------------------------
-  --------------------------------------------------------------------------------
-  Copyright (c) 2016, Loongson Technology Corporation Limited.
+/*----------------------------------------------------------------*
+// Filename      :  execute_stage.v
+// Description   :  5 pipelined CPU execute stage
+// Author        :  Gou Lingrui & Wu Jiahao
+// Email         :  wujiahao15@mails.ucas.ac.cn
+// Created Time  :  2017-10-11 21:04:12
+// Modified Time :  2017-11-17 17:35:21
+//----------------------------------------------------------------*/
 
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without modification,
-  are permitted provided that the following conditions are met:
-
-  1. Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-  2. Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation and/or
-  other materials provided with the distribution.
-
-  3. Neither the name of Loongson Technology Corporation Limited nor the names of
-  its contributors may be used to endorse or promote products derived from this
-  software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  DISCLAIMED. IN NO EVENT SHALL LOONGSON TECHNOLOGY CORPORATION LIMITED BE LIABLE
-  TO ANY PARTY FOR DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  --------------------------------------------------------------------------------
-  --------------------------------------------------------------------------------
- */
-
+`timescale 10ns / 1ns
 module execute_stage(
     input  wire        clk,
     input  wire        rst,
@@ -44,31 +19,28 @@ module execute_stage(
     input  wire [31:0]         Sa_ID_EXE,
     input  wire [31:0]  SgnExtend_ID_EXE,
     input  wire [31:0]    ZExtend_ID_EXE,
-//    input  wire [ 4:0]         Rt_ID_EXE,
-//    input  wire [ 4:0]         Rd_ID_EXE,
     input  wire [ 4:0]   RegWaddr_ID_EXE,
     // control signals passing from ID stage
     input  wire             MemEn_ID_EXE,
+    input  wire         is_signed_ID_EXE,
     input  wire          MemToReg_ID_EXE,
-//    input  wire [ 1:0]     RegDst_ID_EXE,
     input  wire [ 1:0]    ALUSrcA_ID_EXE,
     input  wire [ 1:0]    ALUSrcB_ID_EXE,
     input  wire [ 3:0]      ALUop_ID_EXE,
     input  wire [ 3:0]   MemWrite_ID_EXE,
     input  wire [ 3:0]   RegWrite_ID_EXE,
     input  wire [ 1:0]       MULT_ID_EXE,
-//    input  wire [ 1:0]        DIV_ID_EXE,
     input  wire [ 1:0]       MFHL_ID_EXE,
     input  wire [ 1:0]       MTHL_ID_EXE,
 
-    input  wire                LB_ID_EXE, //new
-    input  wire               LBU_ID_EXE, //new
-    input  wire                LH_ID_EXE, //new
-    input  wire               LHU_ID_EXE, //new
-    input  wire [ 1:0]         LW_ID_EXE, //new
-    input  wire [ 1:0]         SW_ID_EXE, //new
-    input  wire                SB_ID_EXE, //new
-    input  wire                SH_ID_EXE, //new
+    input  wire                LB_ID_EXE,
+    input  wire               LBU_ID_EXE,
+    input  wire                LH_ID_EXE,
+    input  wire               LHU_ID_EXE,
+    input  wire [ 1:0]         LW_ID_EXE,
+    input  wire [ 1:0]         SW_ID_EXE,
+    input  wire                SB_ID_EXE,
+    input  wire                SH_ID_EXE,
 
     // control signals passing to MEM stage
     output reg             MemEn_EXE_MEM,
@@ -78,11 +50,11 @@ module execute_stage(
     output reg  [ 1:0]      MULT_EXE_MEM,
     output reg  [ 1:0]      MFHL_EXE_MEM,
     output reg  [ 1:0]      MTHL_EXE_MEM,
-    output reg                LB_EXE_MEM, //new
-    output reg               LBU_EXE_MEM, //new
-    output reg                LH_EXE_MEM, //new
-    output reg               LHU_EXE_MEM, //new
-    output reg  [ 1:0]        LW_EXE_MEM, //new
+    output reg                LB_EXE_MEM,
+    output reg               LBU_EXE_MEM,
+    output reg                LH_EXE_MEM,
+    output reg               LHU_EXE_MEM,
+    output reg  [ 1:0]        LW_EXE_MEM,
 
     // data passing to MEM stage
     output reg  [ 4:0]  RegWaddr_EXE_MEM,
@@ -94,11 +66,11 @@ module execute_stage(
 
     output wire [31:0]        Bypass_EXE, // Bypass
     
-    input  wire [31:0] cp0Rdata_ID_EXE,
-    input  wire            mfc0_ID_EXE,
+    input  wire [31:0 ] cp0Rdata_ID_EXE,
+    input  wire             mfc0_ID_EXE,
+
     output reg  [31:0] cp0Rdata_EXE_MEM,
     output reg             mfc0_EXE_MEM    
- //   output wire [ 3:0] RegWrite_EXE
 );
 
     wire        ACarryOut,AOverflow,AZero;
@@ -120,36 +92,35 @@ module execute_stage(
     always @(posedge clk)
     if (~rst) begin
         // control signals passing to MEM stage
-           MemEn_EXE_MEM  <=    MemEn_ID_EXE;
-        MemToReg_EXE_MEM  <= MemToReg_ID_EXE;
-        MemWrite_EXE_MEM  <= MemWrite_Final;
-        RegWrite_EXE_MEM  <= RegWrite_ID_EXE;
-            MULT_EXE_MEM  <=     MULT_ID_EXE;
-            MFHL_EXE_MEM  <=     MFHL_ID_EXE;
-            MTHL_EXE_MEM  <=     MTHL_ID_EXE;
-              LB_EXE_MEM  <=       LB_ID_EXE;
-             LBU_EXE_MEM  <=      LBU_ID_EXE;
-              LH_EXE_MEM  <=       LH_ID_EXE;
-             LHU_EXE_MEM  <=      LHU_ID_EXE;
-              LW_EXE_MEM  <=       LW_ID_EXE;
-            mfc0_EXE_MEM  <=     mfc0_ID_EXE;
+        MemWrite_EXE_MEM  <=   MemWrite_Final;
+           MemEn_EXE_MEM  <=     MemEn_ID_EXE;
+        MemToReg_EXE_MEM  <=  MemToReg_ID_EXE;
+        RegWrite_EXE_MEM  <=  RegWrite_ID_EXE;
+            MULT_EXE_MEM  <=      MULT_ID_EXE;
+            MFHL_EXE_MEM  <=      MFHL_ID_EXE;
+            MTHL_EXE_MEM  <=      MTHL_ID_EXE;
+              LB_EXE_MEM  <=        LB_ID_EXE;
+             LBU_EXE_MEM  <=       LBU_ID_EXE;
+              LH_EXE_MEM  <=        LH_ID_EXE;
+             LHU_EXE_MEM  <=       LHU_ID_EXE;
+              LW_EXE_MEM  <=        LW_ID_EXE;
+            mfc0_EXE_MEM  <=      mfc0_ID_EXE;
 
         // data passing to MEM stage
-        RegWaddr_EXE_MEM <=     RegWaddr_EXE;
-       ALUResult_EXE_MEM <=    ALUResult_EXE;
-        MemWdata_EXE_MEM <=         MemWdata;
-              PC_EXE_MEM <=        PC_ID_EXE;
-       RegRdata1_EXE_MEM <= RegRdata1_ID_EXE;
-       RegRdata2_EXE_MEM <= RegRdata2_ID_EXE;
-        cp0Rdata_EXE_MEM <=  cp0Rdata_ID_EXE;
+        RegWaddr_EXE_MEM  <=     RegWaddr_EXE;
+       ALUResult_EXE_MEM  <=    ALUResult_EXE;
+        MemWdata_EXE_MEM  <=         MemWdata;
+              PC_EXE_MEM  <=        PC_ID_EXE;
+       RegRdata1_EXE_MEM  <= RegRdata1_ID_EXE;
+       RegRdata2_EXE_MEM  <= RegRdata2_ID_EXE;
+        cp0Rdata_EXE_MEM  <=  cp0Rdata_ID_EXE;
     end
     else begin
-    { MemEn_EXE_MEM, MemToReg_EXE_MEM, MemWrite_EXE_MEM,
-      RegWrite_EXE_MEM, RegWaddr_EXE_MEM, MULT_EXE_MEM,
-      MFHL_EXE_MEM, MTHL_EXE_MEM, LB_EXE_MEM, LBU_EXE_MEM,
-      LH_EXE_MEM, LHU_EXE_MEM, LW_EXE_MEM, mfc0_EXE_MEM, 
-      ALUResult_EXE_MEM, MemWdata_EXE_MEM, PC_EXE_MEM, RegRdata1_EXE_MEM,
-      RegRdata2_EXE_MEM, cp0Rdata_EXE_MEM} <= 'd0;
+      {    MemEn_EXE_MEM,  MemToReg_EXE_MEM,  MemWrite_EXE_MEM, RegWrite_EXE_MEM, 
+        RegWaddr_EXE_MEM,      MULT_EXE_MEM,      MFHL_EXE_MEM,     MTHL_EXE_MEM, 
+              LB_EXE_MEM,       LBU_EXE_MEM,        LH_EXE_MEM,      LHU_EXE_MEM, 
+              LW_EXE_MEM,      mfc0_EXE_MEM, ALUResult_EXE_MEM, MemWdata_EXE_MEM,
+              PC_EXE_MEM, RegRdata1_EXE_MEM, RegRdata2_EXE_MEM, cp0Rdata_EXE_MEM } <= 'd0;
     end
 
     MUX_4_32 ALUA_MUX(
@@ -170,13 +141,14 @@ module execute_stage(
     );
 
     ALU ALU(
-         .A        (         ALUA),
-         .B        (         ALUB),
-         .ALUop    ( ALUop_ID_EXE),
-         .Overflow (    AOverflow),
-         .CarryOut (    ACarryOut),
-         .Zero     (        AZero),
-         .Result   (ALUResult_EXE)
+         .A         (            ALUA),
+         .B         (            ALUB),
+         .is_signed (is_signed_ID_EXE),
+         .ALUop     (    ALUop_ID_EXE),
+         .Overflow  (       AOverflow),
+         .CarryOut  (       ACarryOut),
+         .Zero      (           AZero),
+         .Result    (   ALUResult_EXE)
     );
 
     MemWrite_Sel MemW (
@@ -200,7 +172,8 @@ module execute_stage(
 endmodule //execute_stage
 
 //////////////////////////////////////////////////////////
-//Three input MUX of five bits
+//           Three input MUX of five bits               //
+//////////////////////////////////////////////////////////
 module MUX_3_5(
     input  [4:0] Src1,
     input  [4:0] Src2,
@@ -252,8 +225,7 @@ module MemWrite_Sel(
 
     assign MemW_SH = ({4{v[0]}} & 4'b0011) | ({4{v[2]}} & 4'b1100);
 
-//Generated directly from the truth table
-
+    //Generated directly from the truth table
     assign MemWrite = ( SW_ID_EXE[1] &~SW_ID_EXE[0]) ? MemW_L ://10
                       (~SW_ID_EXE[1] & SW_ID_EXE[0]) ? MemW_R ://01
                       ( SW_ID_EXE[1] & SW_ID_EXE[0]) ? MemWrite_ID_EXE ://11
@@ -272,7 +244,6 @@ module Store_sel(
   wire swr = SW[0] & ~SW[1];
   wire swl = SW[1] & ~SW[0];
   wire sw  = &SW;
-//  wire ns  = ~(|SW);
 
   wire [3:0] v;
 

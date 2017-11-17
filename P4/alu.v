@@ -1,12 +1,15 @@
-/////////////////////////////////////////////////////////
-// TODO: Need add 'is_signed' signal (in ADD & SUB)    
-//       to differ signed add/sub and unsigned add/sub 
-//       in order to raise inter overflow exception    
-/////////////////////////////////////////////////////////
-
-`define DATA_WIDTH 32
+/*----------------------------------------------------------------*
+// Filename      :  alu.v
+// Description   :  5 pipelined CPU alu part
+// Author        :  Gou Lingrui & Wu Jiahao
+// Email         :  wujiahao15@mails.ucas.ac.cn
+// Created Time  :  2017-10-11 21:04:12
+// Modified Time :  2017-11-17 17:35:21
+//----------------------------------------------------------------*/
 
 `timescale 10ns / 1ns
+
+`define DATA_WIDTH 32
 
 module ALU(
     input  wire [`DATA_WIDTH - 1:0] A,
