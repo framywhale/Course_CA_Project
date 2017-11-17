@@ -62,7 +62,10 @@ module writeback_stage(
     output wire [31:0]       RegWdata_WB,
     output wire [31:0]       RegWdata_Bypass_WB,
     output wire [ 3:0]       RegWrite_WB,
-    output wire [31:0]             PC_WB
+    output wire [31:0]             PC_WB,
+    
+    input  wire [31:0]   cp0Rdata_MEM_WB,
+    input  wire              mfc0_MEM_WB
 );
     wire        MemToReg_WB;
     wire  [31:0]  HI_LO_out;
@@ -77,8 +80,8 @@ module writeback_stage(
     assign RegWaddr_WB = RegWaddr_MEM_WB;
     assign MemToReg_WB = MemToReg_MEM_WB;
     assign RegWrite_WB = RegWrite_MEM_WB;
-    assign RegWdata_WB = |MFHL_MEM_WB ? HI_LO_out : (MemToReg_WB ? MemRdata_Final : ALUResult_MEM_WB);
-    assign RegWdata_Bypass_WB = |MFHL_MEM_WB ? HI_LO_out : ALUResult_MEM_WB;
+    assign RegWdata_WB = |MFHL_MEM_WB ? HI_LO_out : (MemToReg_WB ? MemRdata_Final : (mfc0_MEM_WB ? cp0Rdata_MEM_WB : ALUResult_MEM_WB));
+    assign RegWdata_Bypass_WB = |MFHL_MEM_WB ? HI_LO_out : (mfc0_MEM_WB ? cp0Rdata_MEM_WB :ALUResult_MEM_WB);
 
     RegWdata_Sel RegWdata (
           .MemRdata (       MemRdata_MEM_WB),

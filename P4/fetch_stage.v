@@ -35,9 +35,9 @@
 
 module fetch_stage(
     input  wire        clk,
-    input  wire        rst,  // high active
+    input  wire        rst,
     // data passing from the PC calculate module
-    input  wire        IRWrite,
+    input  wire    IRWrite,
     // For Stall
     input  wire [31:0] PC_next,
     // interaction with inst_sram
@@ -69,7 +69,6 @@ module fetch_stage(
           Inst_IF_ID     <= Inst_IF_ID;
       end
     end
-
 endmodule //fetch_stage
 
 module Adder(

@@ -13,6 +13,9 @@ module divider(
 
 reg [5:0] count;
 
+// wire [32:0] _x;
+// wire [32:0] _y;
+
 wire sign_x;
 wire sign_y;
 wire [31:0] abs_x;
@@ -58,12 +61,14 @@ assign r_64 = diff[63] ? (rmdr[63:0]) : (diff[63:0]) ;
 assign next_q = {q[30:0], ~diff[63]};
 
 assign complete = (count == 6'd32);
+// assign s = complete ? q[31:0] : 32'd0;
+// assign r = complete ? rmdr[31:0] :32'd0;
 assign busy = ~complete&div;
 
 assign s = {32{ ~sign_x & ~sign_y | sign_x&sign_y }} & next_q
-          |{32{  sign_x & ~sign_y | ~sign_x & sign_y }} & (~next_q + 1);
+          |{32{ sign_x & ~sign_y | ~sign_x & sign_y }} & (~next_q + 1);
 assign r = {32{ ~sign_x }} & r_64[62:31]
-          |{32{  sign_x }} & (~r_64[62:31] + 1);
+          |{32{ sign_x }} & (~r_64[62:31] + 1);
 
 
 endmodule

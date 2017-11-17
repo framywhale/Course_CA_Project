@@ -1,5 +1,5 @@
 /*
-  --------------------------------------------------------------------------------
+  ------------------------------------------------------------------------------
   --------------------------------------------------------------------------------
   Copyright (c) 2016, Loongson Technology Corporation Limited.
 
@@ -92,13 +92,19 @@ module execute_stage(
     output reg  [31:0] RegRdata1_EXE_MEM,
     output reg  [31:0] RegRdata2_EXE_MEM,
 
-    output wire [31:0] ALUResult_EXE
+    output wire [31:0]        Bypass_EXE, // Bypass
+    
+    input  wire [31:0] cp0Rdata_ID_EXE,
+    input  wire            mfc0_ID_EXE,
+    output reg  [31:0] cp0Rdata_EXE_MEM,
+    output reg             mfc0_EXE_MEM    
  //   output wire [ 3:0] RegWrite_EXE
 );
 
     wire        ACarryOut,AOverflow,AZero;
     wire [31:0] ALUA,ALUB;
     wire [ 4:0] RegWaddr_EXE;
+    wire [31:0] ALUResult_EXE;
 
     wire [ 3:0] MemWrite_Final;
 //    wire [ 3:0] RegWrite_Final;
@@ -107,6 +113,8 @@ module execute_stage(
 
     assign RegWaddr_EXE = RegWaddr_ID_EXE;
 //    assign RegWrite_EXE = RegWrite_Final;
+
+    assign Bypass_EXE = mfc0_ID_EXE ? cp0Rdata_ID_EXE : ALUResult_EXE;
 
 
     always @(posedge clk)
@@ -124,6 +132,7 @@ module execute_stage(
               LH_EXE_MEM  <=       LH_ID_EXE;
              LHU_EXE_MEM  <=      LHU_ID_EXE;
               LW_EXE_MEM  <=       LW_ID_EXE;
+            mfc0_EXE_MEM  <=     mfc0_ID_EXE;
 
         // data passing to MEM stage
         RegWaddr_EXE_MEM <=     RegWaddr_EXE;
@@ -132,14 +141,15 @@ module execute_stage(
               PC_EXE_MEM <=        PC_ID_EXE;
        RegRdata1_EXE_MEM <= RegRdata1_ID_EXE;
        RegRdata2_EXE_MEM <= RegRdata2_ID_EXE;
+        cp0Rdata_EXE_MEM <=  cp0Rdata_ID_EXE;
     end
     else begin
     { MemEn_EXE_MEM, MemToReg_EXE_MEM, MemWrite_EXE_MEM,
       RegWrite_EXE_MEM, RegWaddr_EXE_MEM, MULT_EXE_MEM,
       MFHL_EXE_MEM, MTHL_EXE_MEM, LB_EXE_MEM, LBU_EXE_MEM,
-      LH_EXE_MEM, LHU_EXE_MEM, LW_EXE_MEM,ALUResult_EXE_MEM,
-      MemWdata_EXE_MEM, PC_EXE_MEM, RegRdata1_EXE_MEM,
-      RegRdata2_EXE_MEM } <= 'd0;
+      LH_EXE_MEM, LHU_EXE_MEM, LW_EXE_MEM, mfc0_EXE_MEM, 
+      ALUResult_EXE_MEM, MemWdata_EXE_MEM, PC_EXE_MEM, RegRdata1_EXE_MEM,
+      RegRdata2_EXE_MEM, cp0Rdata_EXE_MEM} <= 'd0;
     end
 
     MUX_4_32 ALUA_MUX(

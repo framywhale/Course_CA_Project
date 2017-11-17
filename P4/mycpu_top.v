@@ -66,13 +66,13 @@ assign inst_sram_wdata = 32'b0;
 wire   rst;
 assign rst = ~resetn;
 
-wire                     JSrc;
-wire [ 1:0]             PCSrc;
+wire         JSrc;
+wire [ 1:0] PCSrc;
 
-wire [ 4:0]         RegRaddr1;
-wire [ 4:0]         RegRaddr2;
-wire [31:0]         RegRdata1;
-wire [31:0]         RegRdata2;
+wire [ 4:0] RegRaddr1;
+wire [ 4:0] RegRaddr2;
+wire [31:0] RegRdata1;
+wire [31:0] RegRdata2;
 
 wire [31:0]           PC_next;
 wire [31:0]          PC_IF_ID;
@@ -117,6 +117,8 @@ wire [ 1:0]         SW_ID_EXE; //new
 wire                SB_ID_EXE; //new
 wire                SH_ID_EXE; //new
 
+//wire [ 4:0]         Rt_ID_EXE;
+//wire [ 4:0]         Rd_ID_EXE;
 wire [ 4:0]   RegWaddr_ID_EXE;
 wire [31:0]     ALUResult_EXE;
 wire [31:0]     ALUResult_MEM;
@@ -160,6 +162,7 @@ wire [ 1:0]         LW_MEM_WB; //new
 
 wire [31:0]  ALUResult_MEM_WB;
 wire [31:0]  RegRdata2_MEM_WB; //new
+//wire [31:0]   MemRdata_MEM_WB;
 wire [31:0]         PC_MEM_WB;
 wire [31:0]             PC_WB;
 wire [31:0]       RegWdata_WB;
@@ -168,20 +171,45 @@ wire [ 3:0]       RegWrite_WB;
 
 wire [31:0] RegWdata_Bypass_WB;
 
+
 wire [63:0]  MULT_Result;
 wire [31:0]  DIV_quotient;
 wire [31:0]  DIV_remainder;
 wire DIV_Busy;
 wire DIV_Complete;
 
-// HILO IO
+
+
 wire [31:0] HI_in;
 wire [31:0] LO_in;
 wire [ 1:0] HILO_Write;
 wire [31:0] HI_out;
 wire [31:0] LO_out;
+// HILO IO
 
+wire is_eret;
+wire is_trap;
+wire [31:0] CP0Raddr;
+wire [31:0] CP0Rdata;
+wire [31:0] CP0Waddr;
+wire [31:0] CP0Wdata;
+wire [ 3:0] CP0Write;
+wire [31:0]      epc;
+// CP0Reg IO
 
+wire [4:0] rd;
+wire [31:0] RegRdata2_Final;
+wire [31:0] cp0Rdata_ID_EXE;
+wire [31:0] cp0Rdata_EXE_MEM;
+wire [31:0] cp0Rdata_MEM_WB;
+wire mfc0_ID_EXE;
+wire mfc0_EXE_MEM;
+wire mfc0_MEM_WB;
+
+wire realtrap;
+
+wire [31:0] Bypass_EXE;
+wire [31:0] Bypass_MEM;
 
 nextpc_gen nextpc_gen(
     .clk               (               clk), // I  1
@@ -189,6 +217,10 @@ nextpc_gen nextpc_gen(
     .PCWrite           (           PCWrite), // I  1  Stall
     .JSrc              (              JSrc), // I  1
     .PCSrc             (             PCSrc), // I  2
+    .trap              (          realtrap), // I  1
+    .eret              (           is_eret), // I  1
+    .epc               (               epc), // I 32
+//    .inst_addr         (          PC_next), // I 32
     .JR_target         (      JR_target_ID), // I 32
     .J_target          (       J_target_ID), // I 32
     .Br_addr           (      Br_target_ID), // I 32
@@ -220,8 +252,9 @@ decode_stage de_stage(
     .RegRaddr2_ID      (        RegRaddr2), // O  5
     .RegRdata1_ID      (        RegRdata1), // I 32
     .RegRdata2_ID      (        RegRdata2), // I 32
-    .ALUResult_EXE     (    ALUResult_EXE), // I 32 Bypass
-    .ALUResult_MEM     (    ALUResult_MEM), // I 32 Bypass
+    .cp0Rdata_ID       (         CP0Rdata), // I 32 
+    .Bypass_EXE        (       Bypass_EXE), // I 32 Bypass
+    .Bypass_MEM        (       Bypass_MEM), // I 32 Bypass
     .RegWdata_WB       (RegWdata_Bypass_WB), // I 32 Bypass
     .MULT_Result       (      MULT_Result), // I 64 Bypass
     .HI                (           HI_out), // I 32 Bypass
@@ -270,8 +303,15 @@ decode_stage de_stage(
     .SgnExtend_ID_EXE  ( SgnExtend_ID_EXE), // O 32
     .ZExtend_ID_EXE    (   ZExtend_ID_EXE), // O 32
 
-    .is_rs_read_ID     (       is_rs_read),
-    .is_rt_read_ID     (       is_rt_read)
+    .is_rs_read_ID     (       is_rs_read), // O  1
+    .is_rt_read_ID     (       is_rt_read), // O  1
+    .eret_ID           (          is_eret), // O  1
+    .trap_ID           (          is_trap), // O  1
+    .cp0_Write         (         CP0Write), // O  1
+    .rd                (               rd), // O  5
+    .RegRdata2_Final_ID(  RegRdata2_Final), // O 32
+    .mfc0_ID_EXE       (      mfc0_ID_EXE), // O  1
+    .cp0Rdata_ID_EXE   (  cp0Rdata_ID_EXE)  // O 32
   );
 
 
@@ -326,7 +366,13 @@ execute_stage exe_stage(
     .PC_EXE_MEM        (       PC_EXE_MEM), // O 32
     .RegRdata1_EXE_MEM (RegRdata1_EXE_MEM), // O 32
     .RegRdata2_EXE_MEM (RegRdata2_EXE_MEM), // O 32 new
-    .ALUResult_EXE     (    ALUResult_EXE)  // O 32
+    .Bypass_EXE        (       Bypass_EXE), // O 32
+
+    .cp0Rdata_ID_EXE   (  cp0Rdata_ID_EXE), // I 32
+    .mfc0_ID_EXE       (      mfc0_ID_EXE), // I  1
+    .mfc0_EXE_MEM      (     mfc0_EXE_MEM), // O  1
+    .cp0Rdata_EXE_MEM  ( cp0Rdata_EXE_MEM)  // O 32
+     
     );
 
 
@@ -366,7 +412,12 @@ memory_stage mem_stage(
     .PC_MEM_WB         (        PC_MEM_WB), // O 32
     .MFHL_MEM_WB       (      MFHL_MEM_WB), // O  2
 //    .MemRdata_MEM_WB   (  MemRdata_MEM_WB)  // O 32
-    .ALUResult_MEM     (    ALUResult_MEM)
+    .Bypass_MEM        (       Bypass_MEM), // O 32
+    
+    .cp0Rdata_MEM_WB   (  cp0Rdata_MEM_WB), // O 32
+    .mfc0_MEM_WB       (      mfc0_MEM_WB), // O  1
+    .mfc0_EXE_MEM      (     mfc0_EXE_MEM), // I  1
+    .cp0Rdata_EXE_MEM  ( cp0Rdata_EXE_MEM)  // I 32
   );
 
 
@@ -392,7 +443,10 @@ writeback_stage wb_stage(
     .RegWdata_Bypass_WB(RegWdata_Bypass_WB),
     .RegWaddr_WB       (      RegWaddr_WB), // O  5
     .RegWrite_WB       (      RegWrite_WB), // O  4
-    .PC_WB             (            PC_WB)  // O 32
+    .PC_WB             (            PC_WB), // O 32
+    
+    .cp0Rdata_MEM_WB   (  cp0Rdata_MEM_WB), // I 32
+    .mfc0_MEM_WB       (      mfc0_MEM_WB)  // I  1
 );
 
 Bypass_Unit bypass_unit(
@@ -425,7 +479,10 @@ Bypass_Unit bypass_unit(
     .ID_EXE_Stall       (     ID_EXE_Stall),
     // output the real read data in ID stage
     .RegRdata1_src      (    RegRdata1_src),
-    .RegRdata2_src      (    RegRdata2_src)
+    .RegRdata2_src      (    RegRdata2_src),
+    
+    .trap               (          is_trap),
+    .realtrap           (         realtrap)
 );
 
 reg_file RegFile(
@@ -443,11 +500,15 @@ reg_file RegFile(
 cp0reg cp0(
     .clk               (              clk), // I  1
     .rst               (              rst), // I  1
-    .waddr             (      RegWaddr_WB), // I  5
-    .raddr             (         RegRaddr), // I  5
-    .wen               (      RegWrite_WB), // I  4
-    .wdata             (      RegWdata_WB), // I 32
-    .rdata             (         RegRdata)  // O 32
+    .eret              (          is_eret), // I  1
+    .trap              (          is_trap), // I  1
+    .int               (        6'b000000), // I  6
+    .waddr             (         CP0Waddr), // I  5
+    .raddr             (         CP0Raddr), // I  5
+    .wen               (         CP0Write), // I  1
+    .wdata             (         CP0Wdata), // I 32
+    .rdata             (         CP0Rdata), // O 32
+    .epc_value         (              epc)  // O 32
 );
 
 multiplyer mul(
@@ -492,6 +553,11 @@ assign LO_in = |MULT_EXE_MEM    ? MULT_Result[31: 0] :
                 DIV_Complete    ? DIV_quotient       : 'd0;
 assign HILO_Write[1] = |MULT_EXE_MEM | DIV_Complete | MTHL_EXE_MEM[1];
 assign HILO_Write[0] = |MULT_EXE_MEM | DIV_Complete | MTHL_EXE_MEM[0];
+
+assign CP0Waddr = is_trap ? 5'd14 : rd;
+assign CP0Wdata = is_trap ? PC_IF_ID : RegRdata2_Final;
+assign CP0Raddr = rd;
+
 
 
 `ifdef SIMU_DEBUG

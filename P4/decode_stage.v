@@ -45,10 +45,12 @@ module decode_stage(
     output wire [ 4:0]     RegRaddr2_ID,
     input  wire [31:0]     RegRdata1_ID,
     input  wire [31:0]     RegRdata2_ID,
+    
+    input  wire [31:0]      cp0Rdata_ID,
     // control signals passing to
     // PC caculate module
-    input  wire [31:0]     ALUResult_EXE,
-    input  wire [31:0]     ALUResult_MEM,
+    input  wire [31:0]        Bypass_EXE,
+    input  wire [31:0]        Bypass_MEM,
     input  wire [31:0]       RegWdata_WB,
     input  wire [63:0]       MULT_Result,
     input  wire [31:0]                HI,
@@ -91,6 +93,7 @@ module decode_stage(
     output reg  [ 1:0]        SW_ID_EXE,  //new
     output reg                SB_ID_EXE,  //new
     output reg                SH_ID_EXE,  //new
+    output reg              mfc0_ID_EXE,
 
     // data transfering to EXE stage
 //    output reg  [ 4:0]        Rt_ID_EXE,
@@ -103,15 +106,22 @@ module decode_stage(
     output reg  [31:0]        Sa_ID_EXE,
     output reg  [31:0] SgnExtend_ID_EXE,
     output reg  [31:0]   ZExtend_ID_EXE,
+    
+    output reg  [31:0]  cp0Rdata_ID_EXE,
 
     output wire           is_rs_read_ID,
-    output wire           is_rt_read_ID
+    output wire           is_rt_read_ID,
+    output wire           eret_ID,
+    output wire           trap_ID,
+    output wire           cp0_Write,
+    output wire [ 4:0]    rd,
+    output wire [31:0]    RegRdata2_Final_ID
   );
 
 // `ifndef SIMU_DEBUG
 // reg  [31:0] de_inst;        //instr code @decode stage
 // `endif
-	  wire           BranchCond_ID;
+	wire           BranchCond_ID;
     wire                 Zero_ID;
     wire             MemToReg_ID;
     wire                 JSrc_ID;
@@ -143,14 +153,13 @@ module decode_stage(
     wire [ 1:0]            SW_ID;
     wire                   SB_ID;
     wire                   SH_ID;
-
+    wire                 mfc0_ID;
     // temp, intend to remember easily
 
     wire [31:0]  RegRdata1_Final_ID;
-    wire [31:0]  RegRdata2_Final_ID;
     // Bypassed regdata
 
-    wire [ 4:0]       rs,rt,rd,sa;
+    wire [ 4:0]       rs,rt,sa;
 
     wire [31:0] ID_EXE_data;
     wire [31:0] EXE_MEM_data;
@@ -186,8 +195,8 @@ module decode_stage(
 
     always @(posedge clk) begin
     if (rst) begin
-    {MemEn_ID_EXE, MemToReg_ID_EXE, ALUop_ID_EXE, RegWrite_ID_EXE, MemWrite_ID_EXE, ALUSrcA_ID_EXE, ALUSrcB_ID_EXE, MULT_ID_EXE, DIV_ID_EXE, MFHL_ID_EXE, MTHL_ID_EXE, LB_ID_EXE, LBU_ID_EXE, LH_ID_EXE, LHU_ID_EXE, LW_ID_EXE, SW_ID_EXE, SB_ID_EXE, SH_ID_EXE,
-         RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, RegRdata1_ID_EXE, RegRdata2_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE} <= 'd0;
+    {MemEn_ID_EXE, MemToReg_ID_EXE, ALUop_ID_EXE, RegWrite_ID_EXE, MemWrite_ID_EXE, ALUSrcA_ID_EXE, ALUSrcB_ID_EXE, MULT_ID_EXE, DIV_ID_EXE, MFHL_ID_EXE, MTHL_ID_EXE, LB_ID_EXE, LBU_ID_EXE, LH_ID_EXE, LHU_ID_EXE, LW_ID_EXE, SW_ID_EXE, SB_ID_EXE, SH_ID_EXE, mfc0_ID_EXE,
+         RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, RegRdata1_ID_EXE, RegRdata2_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE, cp0Rdata_ID_EXE} <= 'd0;
      end
      else
     if (~ID_EXE_Stall) begin
@@ -212,9 +221,11 @@ module decode_stage(
              SW_ID_EXE  <=       SW_ID;
              SB_ID_EXE  <=       SB_ID;
              SH_ID_EXE  <=       SH_ID;
-
+           mfc0_ID_EXE  <=     mfc0_ID;
 
         // data transfering to EXE stage
+//        Rt_ID_EXE        <= rt;
+ //       Rd_ID_EXE        <= rd;
         RegWaddr_ID_EXE  <=          RegWaddr_ID;
         Sa_ID_EXE        <=                Sa_ID;
         PC_ID_EXE        <=             PC_IF_ID;
@@ -223,21 +234,22 @@ module decode_stage(
         RegRdata2_ID_EXE <=   RegRdata2_Final_ID;
         SgnExtend_ID_EXE <=         SgnExtend_ID;
           ZExtend_ID_EXE <=           ZExtend_ID;
+         cp0Rdata_ID_EXE <=          cp0Rdata_ID;
     end
     else if (~(|DIV_ID_EXE))
     {MemEn_ID_EXE, MemToReg_ID_EXE, ALUop_ID_EXE, 
      RegWrite_ID_EXE, MemWrite_ID_EXE, ALUSrcA_ID_EXE, 
      ALUSrcB_ID_EXE, MULT_ID_EXE, DIV_ID_EXE, MFHL_ID_EXE, 
      MTHL_ID_EXE, LB_ID_EXE, LBU_ID_EXE, LH_ID_EXE, LHU_ID_EXE, 
-     LW_ID_EXE, SW_ID_EXE, SB_ID_EXE, SH_ID_EXE,            //control
-     RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, RegRdata1_ID_EXE, RegRdata2_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE} <= 'd0;
+     LW_ID_EXE, SW_ID_EXE, SB_ID_EXE, SH_ID_EXE, mfc0_ID_EXE,            //control
+     RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, RegRdata1_ID_EXE, RegRdata2_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE, cp0Rdata_ID_EXE} <= 'd0;
      else if (~DIV_Complete) begin
      {MemEn_ID_EXE, MemToReg_ID_EXE, ALUop_ID_EXE, 
      RegWrite_ID_EXE, MemWrite_ID_EXE, ALUSrcA_ID_EXE, 
      ALUSrcB_ID_EXE, MULT_ID_EXE, MFHL_ID_EXE, MTHL_ID_EXE, 
      LB_ID_EXE, LBU_ID_EXE, LH_ID_EXE, LHU_ID_EXE, LW_ID_EXE, 
-     SW_ID_EXE, SB_ID_EXE, SH_ID_EXE,                      //control
-          RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE} <= 'd0;
+     SW_ID_EXE, SB_ID_EXE, SH_ID_EXE,  mfc0_ID_EXE,                    //control
+          RegWaddr_ID_EXE, Sa_ID_EXE, PC_ID_EXE, PC_add_4_ID_EXE, SgnExtend_ID_EXE, ZExtend_ID_EXE, cp0Rdata_ID_EXE} <= 'd0;
      DIV_ID_EXE <= DIV_ID_EXE;
      RegRdata1_ID_EXE <= RegRdata1_ID_EXE;
      RegRdata2_ID_EXE <= RegRdata2_ID_EXE;
@@ -263,8 +275,12 @@ module decode_stage(
          SW_ID_EXE  <=       SW_ID;
          SB_ID_EXE  <=       SB_ID;
          SH_ID_EXE  <=       SH_ID;
+       mfc0_ID_EXE  <=     mfc0_ID;
+
 
     // data transfering to EXE stage
+//        Rt_ID_EXE        <= rt;
+//       Rd_ID_EXE        <= rd;
     RegWaddr_ID_EXE  <=          RegWaddr_ID;
     Sa_ID_EXE        <=                Sa_ID;
     PC_ID_EXE        <=             PC_IF_ID;
@@ -273,6 +289,7 @@ module decode_stage(
     RegRdata2_ID_EXE <=   RegRdata2_Final_ID;
     SgnExtend_ID_EXE <=         SgnExtend_ID;
       ZExtend_ID_EXE <=           ZExtend_ID;
+     cp0Rdata_ID_EXE <=          cp0Rdata_ID;
     end
     end
 
@@ -287,6 +304,7 @@ module decode_stage(
         .BranchCond(    BranchCond_ID),
         .op        (Inst_IF_ID[31:26]),
         .func      (Inst_IF_ID[ 5: 0]),
+        .rs        (Inst_IF_ID[25:21]),
         .rt        (               rt),
         .MemEn     (         MemEn_ID),
         .JSrc      (          JSrc_ID),
@@ -312,7 +330,11 @@ module decode_stage(
         .LW        (            LW_ID),
         .SW        (            SW_ID),
         .SB        (            SB_ID),
-        .SH        (            SH_ID)
+        .SH        (            SH_ID),
+        .mfc0      (          mfc0_ID),
+        .trap      (          trap_ID),
+        .eret      (          eret_ID),
+        .cp0_Write (        cp0_Write)
 
     );
     MUX_4_32 RegRdata1_MUX(
@@ -342,8 +364,8 @@ wire [31:0] MULT_HI_LO = {32{MFHL_ID_EXE_1[1]}}  & MULT_Result[63:32] | {32{MFHL
 wire [31:0]  EXE_HI_LO = {32{MFHL_ID_EXE_1[1]}}  & HI                 | {32{MFHL_ID_EXE_1[0]}}  & LO;
 wire [31:0]  MEM_HI_LO = {32{MFHL_EXE_MEM[1]}}   & HI                 | {32{MFHL_EXE_MEM[0]}}   & LO;
 wire [31:0]   WB_HI_LO = {32{MFHL_MEM_WB[1]}}    & HI                 | {32{MFHL_MEM_WB[0]}}    & LO;
-assign ID_EXE_data  =  |MFHL_ID_EXE  ? (MULT_EXE_MEM ? MULT_HI_LO : EXE_HI_LO) : ALUResult_EXE;
-assign EXE_MEM_data =  |MFHL_EXE_MEM ? MEM_HI_LO : ALUResult_MEM;
+assign ID_EXE_data  =  |MFHL_ID_EXE  ? (MULT_EXE_MEM ? MULT_HI_LO : EXE_HI_LO) : Bypass_EXE;
+assign EXE_MEM_data =  |MFHL_EXE_MEM ? MEM_HI_LO : Bypass_MEM;
 assign MEM_WB_data  =  |MFHL_MEM_WB  ?  WB_HI_LO : RegWdata_WB;
 endmodule //decode_stage
 
@@ -353,14 +375,20 @@ module Branch_Cond(
     input [ 5:0] B_Type,   //blt ble bgt bge beq bne
     output       Cond
 );
-  wire zero, ge, gt, le, lt;
-  assign zero = ~(|(A - B));
-  assign lt   =  A[31];
-  assign ge   = ~A[31];
-  assign gt   = ~A[31] &    |A[30:0];
-  assign le   =  A[31] | (&(~A[31:0]));
+	wire zero, ge, gt, le, lt;
+/*    ALU Zero(
+        .A     (      A),
+        .B     (      B),
+        .ALUop (4'b0110),   //SUB
+        .Zero  (   zero)
+    ); */
+    assign zero = ~(|(A - B));
+    assign ge = ~A[31];
+    assign gt = ~A[31] &    |A[30:0];
+    assign le =  A[31] | (&(~A[31:0]));
+    assign lt =  A[31];
 
-  assign Cond = ((B_Type[0] & ~zero | B_Type[1] & zero) | (B_Type[2] & ge | B_Type[3] & gt)) | (B_Type[4] & le | B_Type[5] & lt);
+    assign Cond = ((B_Type[0] & ~zero | B_Type[1] & zero) | (B_Type[2] & ge | B_Type[3] & gt)) | (B_Type[4] & le | B_Type[5] & lt);
 
 
 endmodule
