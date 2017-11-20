@@ -8,14 +8,15 @@
 //----------------------------------------------------------------*/
 
 `timescale 10ns / 1ns
+
 module fetch_stage(
     input  wire        clk,
     input  wire        rst,
     // delay slot tag
-    input  wire    DSI_ID,   // delay slot instruction tag
+    input  wire      DSI_ID, // delay slot instruction tag
     input  wire    Excpt_ID, // Except tag
     // data passing from the PC calculate module
-    input  wire    IRWrite,
+    input  wire     IRWrite,
     // For Stall
     input  wire [31:0] PC_next,
     input  wire        PC_AdEL,
@@ -32,6 +33,8 @@ module fetch_stage(
   );
     parameter reset_addr = 32'hbfc00000;
 
+    reg  [1:0]  nop_count;
+
     assign inst_sram_en = ~rst;
 
     always @ (posedge clk) begin
@@ -40,14 +43,23 @@ module fetch_stage(
           PC_AdEL_IF_ID  <= 1'b0;
           PC_IF_ID       <= reset_addr;
           PC_add_4_IF_ID <= reset_addr+4;
-          Inst_IF_ID     <= 32'd0;       
+          Inst_IF_ID     <= 32'd0;  
+          nop_count      <= 2'b00;     
       end
       else if (IRWrite) begin
           DSI_IF_ID      <= DSI;
           PC_AdEL_IF_ID  <= PC_AdEL;
           PC_IF_ID       <= PC_next;
           PC_add_4_IF_ID <= PC_next+4;
-          Inst_IF_ID     <= inst_sram_rdata;
+          if(Excpt_ID | (nop_count != 2'd0)) begin
+              Inst_IF_ID <= 32'd0;
+              if(nop_count == 2'b11)
+                  nop_count <= 2'b00;
+              else
+                  nop_count <= nop_count+1;
+          end
+          else
+              Inst_IF_ID     <= inst_sram_rdata;
       end
       else begin
           DSI_IF_ID      <=      DSI_IF_ID;
@@ -55,10 +67,13 @@ module fetch_stage(
           PC_IF_ID       <=       PC_IF_ID;
           PC_add_4_IF_ID <= PC_add_4_IF_ID;
           Inst_IF_ID     <=     Inst_IF_ID;
+          nop_count      <=      nop_count;
       end
     end
+
 endmodule //fetch_stage
 
+/*
 module Adder(
     input  [31:0] A,
     input  [31:0] B,
@@ -71,3 +86,4 @@ module Adder(
         .Result ( Result)
     );
 endmodule
+*/

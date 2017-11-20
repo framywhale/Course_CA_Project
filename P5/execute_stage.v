@@ -125,7 +125,7 @@ module execute_stage(
 
     assign RegWaddr_EXE = RegWaddr_ID_EXE;
 
-    assign   Bypass_EXE = mfc0_ID_EXE ? cp0Rdata_ID_EXE : ALUResult_EXE;
+    assign   Bypass_EXE = ALUResult_EXE;
 
     always @(posedge clk)
     if (~rst) begin
@@ -150,14 +150,15 @@ module execute_stage(
               PC_EXE_MEM  <=        PC_ID_EXE;
        RegRdata1_EXE_MEM  <= RegRdata1_ID_EXE;
        RegRdata2_EXE_MEM  <= RegRdata2_ID_EXE;
-        cp0Rdata_EXE_MEM  <=  cp0Rdata_ID_EXE;
+        cp0Rdata_EXE_MEM  <=  //cp0Rdata_ID_EXE;
     end
     else begin
       {    MemEn_EXE_MEM,  MemToReg_EXE_MEM,  MemWrite_EXE_MEM, RegWrite_EXE_MEM, 
         RegWaddr_EXE_MEM,      MULT_EXE_MEM,      MFHL_EXE_MEM,     MTHL_EXE_MEM, 
               LB_EXE_MEM,       LBU_EXE_MEM,        LH_EXE_MEM,      LHU_EXE_MEM, 
               LW_EXE_MEM,      mfc0_EXE_MEM, ALUResult_EXE_MEM, MemWdata_EXE_MEM,
-              PC_EXE_MEM, RegRdata1_EXE_MEM, RegRdata2_EXE_MEM, cp0Rdata_EXE_MEM} <= 'd0;
+              PC_EXE_MEM, RegRdata1_EXE_MEM, RegRdata2_EXE_MEM, cp0Rdata_EXE_MEM
+      } <= 'd0;
     end
 
     MUX_4_32 ALUA_MUX(
@@ -168,6 +169,7 @@ module execute_stage(
         .op     (  ALUSrcA_ID_EXE),
         .Result (            ALUA)
     );
+
     MUX_4_32 ALUB_MUX(
         .Src1   (RegRdata2_ID_EXE),
         .Src2   (SgnExtend_ID_EXE),
