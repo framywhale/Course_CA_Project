@@ -347,11 +347,11 @@ module Addr_error(
     output wire        AdES_EXE
   );
   wire   AdEL_LH, AdEL_LW, AdES_SH, AdES_SW;
-  assign AdEL_LH = address[0] & AdEL_LH;
-  assign AdEL_LW = (|address) & AdEL_LW;
+  assign AdEL_LH = address[0] & is_lh;
+  assign AdEL_LW = (|address) & is_lw;
 
-  assign AdES_SH = address[0] & AdES_SH;
-  assign AdES_SW = (|address) & AdEL_SW;
+  assign AdES_SH = address[0] & is_sh;
+  assign AdES_SW = (|address) & is_sw;
 
   assign AdEL_EXE = AdEL_LH | AdEL_LW;
   assign AdES_EXE = AdES_SH | AdES_SW;
