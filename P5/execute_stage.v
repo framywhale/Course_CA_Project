@@ -13,7 +13,7 @@ module execute_stage(
     input  wire                      rst,
     // interrupt signals
     input  wire [ 6:0]               int,  
-    // data transfering from ID stage
+    // data transferring from ID stage
     input  wire [31:0]   PC_add_4_ID_EXE,
     input  wire [31:0]         PC_ID_EXE,
     input  wire [31:0]  RegRdata1_ID_EXE,
@@ -23,7 +23,7 @@ module execute_stage(
     input  wire [31:0]    ZExtend_ID_EXE,
     input  wire [ 4:0]   RegWaddr_ID_EXE,
     input  wire               DSI_ID_EXE,
-    input  wire [ 3:0]    Exc_vec_ID_EXE, // new -> exception vecter
+    input  wire [ 3:0]    Exc_vec_ID_EXE, // new -> exception vector
     // control signals passing from ID stage
     input  wire             MemEn_ID_EXE,
     input  wire         is_signed_ID_EXE,
@@ -74,27 +74,58 @@ module execute_stage(
     input  wire              mfc0_ID_EXE,
 
     output reg  [31:0]  cp0Rdata_EXE_MEM,
-    output reg              mfc0_EXE_MEM    
+    output reg              mfc0_EXE_MEM,
+
+    output wire [31:0]      Exc_BadVaddr,   
+    output wire [31:0]      Exc_EPC,
+    // Exc_Cause[5]   = Cause.BD
+    // Exc_Cause[4:0] = Cause.ExcCode
+    output wire [ 5:0]      Exc_Cause     
 );
 
     wire        AdEL_EXE,AdES_EXE,int;
     wire        ACarryOut,AOverflow,AZero;
-    wire [ 7:0] Exc_vecter;
+    wire [ 4:0] ExcCode_EXE;      
+    wire [ 7:0] Exc_vector;
     wire [31:0] ALUA,ALUB;
     wire [ 4:0] RegWaddr_EXE;
-    wire [31:0] ALUResult_EXE;
+    wire [31:0] ALUResult_EXE,BadVaddr_EXE;
 
     wire [ 3:0] MemWrite_Final;
 //    wire [ 3:0] RegWrite_Final;
 
     wire [31:0] MemWdata;
-    assign Exc_vecter = {int, Exc_vec_ID_EXE[3:2], AOverflow,
-                              Exc_vec_ID_EXE[1:0], AdEL_EXE,AdES_EXE};
+    // Exception Signals
+    assign BadVaddr_EXE = ALUResult_EXE & {32{AdEL_EXE|AdES_EXE}};
+    // Exc_vec_ID_EXE[3]: PC_AdEL
+    // Exc_vec_ID_EXE[2]: Reserved Instruction
+    // Exc_vec_ID_EXE[1]: syscall
+    // Exc_vec_ID_EXE[0]: breakpoint
+    assign Exc_BadVaddr = Exc_vec_ID_EXE[3] ? PC_ID_EXE : BadVaddr_EXE; // if PC is wrong
+    assign Exc_EPC      = DSI_ID_EXE ? PC_ID_EXE : PC_add_4_ID_EXE;
+    assign Exc_Cause    = {DSI_ID_EXE,ExcCode_EXE};
+    // Exc_vector[7]: interrupt
+    // Exc_vector[6]: PC_AdEL
+    // Exc_vector[5]: Reserved Instruction
+    // Exc_vector[4]: OverFlow
+    // Exc_vector[3]: syscall
+    // Exc_vector[2]: breakpoint
+    // Exc_vector[1]: AdEL
+    // Exc_vector[0]: AdES
+    assign Exc_vector   = {int, Exc_vec_ID_EXE[3:2], AOverflow,
+                                Exc_vec_ID_EXE[1:0], AdEL_EXE,AdES_EXE};
+    assign ExcCode_EXE  = (Exc_vector[7]) ? 5'h0 :        // interrupt
+                          (Exc_vector[6]) ? 5'h4 :        // PC_AdEL
+                          (Exc_vector[5]) ? 5'ha :        // Reserved Instruction
+                          (Exc_vector[4]) ? 5'hc :        // OverFlow
+                          (Exc_vector[3]) ? 5'h8 :        // syscall
+                          (Exc_vector[2]) ? 5'h9 :        // breakpoint
+                          (Exc_vector[1]) ? 5'h4 :        // AdEL
+                          (Exc_vector[0]) ? 5'h5 : 5'hf;  // AdES
 
     assign RegWaddr_EXE = RegWaddr_ID_EXE;
-//  assign RegWrite_EXE = RegWrite_Final;
 
-    assign Bypass_EXE = mfc0_ID_EXE ? cp0Rdata_ID_EXE : ALUResult_EXE;
+    assign   Bypass_EXE = mfc0_ID_EXE ? cp0Rdata_ID_EXE : ALUResult_EXE;
 
     always @(posedge clk)
     if (~rst) begin
@@ -167,12 +198,12 @@ module execute_stage(
     );
 
     Store_sel Store (
-         .vaddr        (ALUResult_EXE[1:0]),
-         .SW           (         SW_ID_EXE),
-         .SB           (         SB_ID_EXE),
-         .SH           (         SH_ID_EXE),
-         .Rt_read_data (  RegRdata2_ID_EXE),
-         .MemWdata     (          MemWdata)
+         .vaddr        (  ALUResult_EXE[1:0]),
+         .SW           (           SW_ID_EXE),
+         .SB           (           SB_ID_EXE),
+         .SH           (           SH_ID_EXE),
+         .Rt_read_data (    RegRdata2_ID_EXE),
+         .MemWdata     (            MemWdata)
     );
 
     Addr_error ADELS(

@@ -17,6 +17,7 @@ module decode_stage(
     input  wire [31:0]         PC_IF_ID,
     input  wire [31:0]   PC_add_4_IF_ID,
     input  wire           PC_AdEL_IF_ID,  // new
+    input  wire             Excpt_IF_ID,  // new      
     // interaction with the Register files
     output wire [ 4:0]     RegRaddr1_ID,
     output wire [ 4:0]     RegRaddr2_ID,
@@ -72,10 +73,10 @@ module decode_stage(
     output reg         is_signed_ID_EXE,  // new
     output reg               DSI_ID_EXE,  // delay slot instruction
     // Exception vecter achieved in decode stage
-    // Exc_vec[3]: PC_AdEL
-    // Exc_vec[2]: Reserved Instruction
-    // Exc_vec[1]: syscall
-    // Exc_vec[0]: breakpoint
+    // Exc_vec_ID_EXE[3]: PC_AdEL
+    // Exc_vec_ID_EXE[2]: Reserved Instruction
+    // Exc_vec_ID_EXE[1]: syscall
+    // Exc_vec_ID_EXE[0]: breakpoint
     output reg  [ 3:0]   Exc_vec_ID_EXE,  
     // data transfering to EXE stage
     output reg  [ 4:0]  RegWaddr_ID_EXE,
@@ -96,7 +97,9 @@ module decode_stage(
     output wire           trap_ID,
     output wire           cp0_Write,
     output wire [ 4:0]    rd,
-    output wire [31:0]    RegRdata2_Final_ID
+    output wire [31:0]    RegRdata2_Final_ID,
+    output wire           DSI_ID,
+    output wire           Excpt_ID    
   );
 
 // `ifndef SIMU_DEBUG
@@ -142,8 +145,6 @@ module decode_stage(
     wire [31:0]  RegRdata1_Final_ID;
     wire [ 3:0]          Exc_vec_ID;
 
-    reg                    Excpt_ID;  // mark exception
-    reg                      DSI_ID;  // mark delay slot instruction
     reg               is_j_or_br_ID;  // new
     // Bypassed regdata
 

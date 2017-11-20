@@ -12,7 +12,8 @@ module fetch_stage(
     input  wire        clk,
     input  wire        rst,
     // delay slot tag
-    input  wire    DSI,  // delay slot instruction tag
+    input  wire    DSI_ID,   // delay slot instruction tag
+    input  wire    Excpt_ID, // Except tag
     // data passing from the PC calculate module
     input  wire    IRWrite,
     // For Stall

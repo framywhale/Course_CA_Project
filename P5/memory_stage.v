@@ -93,7 +93,4 @@ module memory_stage(
                  LW_MEM_WB,      mfc0_MEM_WB
         } <= 'd0;
 
-//always @(*) if (MemEn_MEM & (|MemWrite_MEM)) $display ("Store!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-//    assign MemRdata_MEM_WB  = data_sram_rdata;
-
 endmodule //memory_stage

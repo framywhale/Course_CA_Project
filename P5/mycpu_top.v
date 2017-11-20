@@ -227,7 +227,7 @@ decode_stage de_stage(
     .Inst_IF_ID        (        Inst_IF_ID), // I 32
     .PC_IF_ID          (          PC_IF_ID), // I 32
     .PC_add_4_IF_ID    (    PC_add_4_IF_ID), // I 32
-    .DSI_IF_ID         (         DSI_IF_ID), // I  1   new
+    .DSI_IF_ID         (         DSI_IF_ID), // I  1   new delay slot instruction tag
     .PC_AdEL_IF_ID     (     PC_AdEL_IF_ID), // I  1   new
     .RegRaddr1_ID      (         RegRaddr1), // O  5
     .RegRaddr2_ID      (         RegRaddr2), // O  5
@@ -274,7 +274,7 @@ decode_stage de_stage(
     .SW_ID_EXE         (         SW_ID_EXE), // O  2 
     .SB_ID_EXE         (         SB_ID_EXE), // O  1 
     .SH_ID_EXE         (         SH_ID_EXE), // O  1 
-
+    .DSI_ID_EXE        (        DSI_ID_EXE), // O  1 delay slot instruction tag
     .RegWaddr_ID_EXE   (   RegWaddr_ID_EXE), // O  5
     .PC_add_4_ID_EXE   (   PC_add_4_ID_EXE), // O 32
     .PC_ID_EXE         (         PC_ID_EXE), // O 32
@@ -283,7 +283,7 @@ decode_stage de_stage(
     .Sa_ID_EXE         (         Sa_ID_EXE), // O 32
     .SgnExtend_ID_EXE  (  SgnExtend_ID_EXE), // O 32
     .ZExtend_ID_EXE    (    ZExtend_ID_EXE), // O 32
-
+     
     .is_rs_read_ID     (        is_rs_read), // O  1
     .is_rt_read_ID     (        is_rt_read), // O  1
     .eret_ID           (           is_eret), // O  1
@@ -293,6 +293,7 @@ decode_stage de_stage(
     .RegRdata2_Final_ID(   RegRdata2_Final), // O 32
     .mfc0_ID_EXE       (       mfc0_ID_EXE), // O  1
     .cp0Rdata_ID_EXE   (   cp0Rdata_ID_EXE)  // O 32
+    .DSI_ID            (            DSI_ID)  // O  1 NEW
   );
 
 
@@ -308,9 +309,9 @@ execute_stage exe_stage(
     .ZExtend_ID_EXE    (   ZExtend_ID_EXE), // I 32
     .RegWaddr_ID_EXE   (  RegWaddr_ID_EXE), // I  5
     .MemEn_ID_EXE      (     MemEn_ID_EXE), // I  1
-    .MemToReg_ID_EXE   (  MemToReg_ID_EXE), // I  1
+    .MemToReg_ID_EXE   (  MemToReg_ID_EXE), // I  1 
     .is_signed_ID_EXE  ( is_signed_ID_EXE), // I  1 help ALU to judge Overflow
-    .DSI_ID_EXE        (       DSI_ID_EXE), // I  1
+    .DSI_ID_EXE        (       DSI_ID_EXE), // I  1 delay slot instruction tag
     .ALUSrcA_ID_EXE    (   ALUSrcA_ID_EXE), // I  2
     .ALUSrcB_ID_EXE    (   ALUSrcB_ID_EXE), // I  2
     .ALUop_ID_EXE      (     ALUop_ID_EXE), // I  4
@@ -485,7 +486,8 @@ cp0reg cp0(
     .wen               (         CP0Write), // I  1
     .wdata             (         CP0Wdata), // I 32
     .rdata             (         CP0Rdata), // O 32
-    .epc_value         (              epc)  // O 32
+    .epc_value         (              epc), // O 32
+
 );
 
 multiplyer mul(
