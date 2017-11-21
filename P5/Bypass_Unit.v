@@ -32,20 +32,15 @@ module Bypass_Unit(
 
     input  wire DIV_Busy,
     input  wire DIV,
-    input  wire trap,
     // output the stall signals
     output wire        PCWrite,
     output wire        IRWrite,
     output wire        ID_EXE_Stall,
     // output the real read data in ID stage
     output wire [ 1:0] RegRdata1_src,
-    output wire [ 1:0] RegRdata2_src,
-    output wire realtrap
+    output wire [ 1:0] RegRdata2_src
   );
-    reg trap_flag; //nb
-    
-    
-    
+
     wire [ 4:0] rs_read, rt_read;
     assign rs_read = (is_rs_read) ? rs_ID : 5'd0;
     assign rt_read = (is_rt_read) ? rt_ID : 5'd0;
@@ -78,35 +73,6 @@ module Bypass_Unit(
 
 
     assign PCWrite = ~ID_EXE_Stall;
-    assign IRWrite = ~(ID_EXE_Stall | realtrap);
+    assign IRWrite = ~(ID_EXE_Stall);
     
-    assign realtrap = trap & ~trap_flag;
-
-    
-    always @ (posedge clk) 
-    if (rst) 
-        trap_flag <= 1'b0;
-    else if (trap | trap_flag) 
-        trap_flag <= ~trap_flag;
-    else 
-        trap_flag <= trap_flag;
-    
-/*
-reg [31:0] WB_Stall;
-reg [31:0] L_WB_Stall;
- always @(posedge clk)
- if(rst) begin
- WB_Stall <= 32'd0;
- L_WB_Stall <= 32'd0;
- end
- else
-   if (Haz_ID_WB_rt & ~Haz_ID_EXE_rt & ~Haz_ID_MEM_rt | Haz_ID_WB_rs & ~Haz_ID_EXE_rs & ~Haz_ID_MEM_rs) begin
-    $display("WB Stalled!!!!!!!!!!!!!!!!!!!!!!!!!! %d",WB_Stall);
-    WB_Stall <= WB_Stall + 1;
-   if(MemToReg_MEM_WB) begin
-    $display("Load Stalled, %d", L_WB_Stall);
-    L_WB_Stall <= L_WB_Stall + 1;
-    end
-   end
-   */
 endmodule // Bypass Unit

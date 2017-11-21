@@ -13,8 +13,9 @@ module nextpc_gen(
     input  wire        rst,
     input  wire        PCWrite,  // For Stall
     input  wire        JSrc,
-    input  wire        trap,
+ //   input  wire        trap,
     input  wire        eret,
+    input  wire        ex_int_handle,
     input  wire [ 1:0] PCSrc,
     input  wire [31:0] JR_target,
     input  wire [31:0] J_target,
@@ -29,12 +30,12 @@ module nextpc_gen(
     
     wire [31:0] Jump_addr, inst_addr, PC_mux;
 
-    assign Jump_addr = JSrc ? JR_target   : J_target; 
+    assign Jump_addr = JSrc ? JR_target : J_target; 
 
-    assign inst_addr = trap ? except_addr : 
-                       eret ? epc         : PC_mux;
+    assign inst_addr = ex_int_handle  ? except_addr : 
+                                eret  ? epc         : PC_mux;
 
-    assign inst_sram_addr = PCWrite ? inst_addr   : PC_next;
+    assign inst_sram_addr = PCWrite ? inst_addr  : PC_next;
 
     assign PC_AdEL = (|inst_sram_addr[1:0]) ? 1'b1 : 1'b0;
   

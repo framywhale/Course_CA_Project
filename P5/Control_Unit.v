@@ -263,7 +263,7 @@ assign trap = ~rst & (inst_syscall | inst_break);
 assign sys  = ~rst &  inst_syscall ;
 assign bp   = ~rst &  inst_break   ;
 
-assign cp0_Write = ~rst & (inst_mtc0 | inst_syscall | inst_break );
+assign cp0_Write = ~rst & (inst_mtc0);
 
 assign is_signed = ~rst & (inst_add  | inst_sub     | inst_addi  );
 

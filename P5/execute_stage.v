@@ -10,9 +10,7 @@
 `timescale 10ns / 1ns
 module execute_stage(
     input  wire                      clk,
-    input  wire                      rst,
-    // interrupt signals
-    input  wire [ 6:0]               int,  
+    input  wire                      rst, 
     // data transferring from ID stage
     input  wire [31:0]   PC_add_4_ID_EXE,
     input  wire [31:0]         PC_ID_EXE,
@@ -24,6 +22,7 @@ module execute_stage(
     input  wire [ 4:0]   RegWaddr_ID_EXE,
     input  wire               DSI_ID_EXE,
     input  wire [ 3:0]    Exc_vec_ID_EXE, // new -> exception vector
+    input  wire         cp0_Write_ID_EXE,           
     // control signals passing from ID stage
     input  wire             MemEn_ID_EXE,
     input  wire         is_signed_ID_EXE,
@@ -69,24 +68,22 @@ module execute_stage(
     output reg  [31:0] RegRdata2_EXE_MEM,
 
     output wire [31:0]        Bypass_EXE, // Bypass
-    
-    input  wire [31:0 ]  cp0Rdata_ID_EXE,
+    input  wire [ 4:0]         Rd_ID_EXE,
+    input  wire [31:0]         cp0Rdata, // From cp0 directly
     input  wire              mfc0_ID_EXE,
 
     output reg  [31:0]  cp0Rdata_EXE_MEM,
     output reg              mfc0_EXE_MEM,
 
     output wire [31:0]      Exc_BadVaddr,   
-    output wire [31:0]      Exc_EPC,
-    // Exc_Cause[5]   = Cause.BD
-    // Exc_Cause[4:0] = Cause.ExcCode
-    output wire [ 5:0]      Exc_Cause     
+    output wire [31:0]      Exc_EPC ,
+    output wire             Exc_BD,
+    output wire [ 6:0]      Exc_Vec,
+    input  wire [31:0]      cp0Rdata_EXE
 );
 
-    wire        AdEL_EXE,AdES_EXE,int;
-    wire        ACarryOut,AOverflow,AZero;
-    wire [ 4:0] ExcCode_EXE;      
-    wire [ 7:0] Exc_vector;
+    wire        AdEL_EXE,AdES_EXE;
+    wire        ACarryOut,AOverflow,AZero;     
     wire [31:0] ALUA,ALUB;
     wire [ 4:0] RegWaddr_EXE;
     wire [31:0] ALUResult_EXE,BadVaddr_EXE;
@@ -102,8 +99,7 @@ module execute_stage(
     // Exc_vec_ID_EXE[1]: syscall
     // Exc_vec_ID_EXE[0]: breakpoint
     assign Exc_BadVaddr = Exc_vec_ID_EXE[3] ? PC_ID_EXE : BadVaddr_EXE; // if PC is wrong
-    assign Exc_EPC      = DSI_ID_EXE ? PC_ID_EXE : PC_add_4_ID_EXE;
-    assign Exc_Cause    = {DSI_ID_EXE,ExcCode_EXE};
+    assign Exc_EPC      = DSI_ID_EXE ? PC_ID_EXE - 32'd4: PC_ID_EXE;
     // Exc_vector[7]: interrupt
     // Exc_vector[6]: PC_AdEL
     // Exc_vector[5]: Reserved Instruction
@@ -112,21 +108,13 @@ module execute_stage(
     // Exc_vector[2]: breakpoint
     // Exc_vector[1]: AdEL
     // Exc_vector[0]: AdES
-    assign Exc_vector   = {int, Exc_vec_ID_EXE[3:2], AOverflow,
-                                Exc_vec_ID_EXE[1:0], AdEL_EXE,AdES_EXE};
-    assign ExcCode_EXE  = (Exc_vector[7]) ? 5'h0 :        // interrupt
-                          (Exc_vector[6]) ? 5'h4 :        // PC_AdEL
-                          (Exc_vector[5]) ? 5'ha :        // Reserved Instruction
-                          (Exc_vector[4]) ? 5'hc :        // OverFlow
-                          (Exc_vector[3]) ? 5'h8 :        // syscall
-                          (Exc_vector[2]) ? 5'h9 :        // breakpoint
-                          (Exc_vector[1]) ? 5'h4 :        // AdEL
-                          (Exc_vector[0]) ? 5'h5 : 5'hf;  // AdES
+    assign Exc_Vec      = {Exc_vec_ID_EXE[3:2], AOverflow,
+                           Exc_vec_ID_EXE[1:0], AdEL_EXE,AdES_EXE};
 
     assign RegWaddr_EXE = RegWaddr_ID_EXE;
 
-    assign   Bypass_EXE = ALUResult_EXE;
-
+    assign   Bypass_EXE = mfc0_ID_EXE ? cp0Rdata : ALUResult_EXE;
+ 
     always @(posedge clk)
     if (~rst) begin
         // control signals passing to MEM stage
@@ -147,10 +135,10 @@ module execute_stage(
         RegWaddr_EXE_MEM  <=     RegWaddr_EXE;
        ALUResult_EXE_MEM  <=    ALUResult_EXE;
         MemWdata_EXE_MEM  <=         MemWdata;
-              PC_EXE_MEM  <=        PC_ID_EXE;
+              PC_EXE_MEM  <=  PC_add_4_ID_EXE;
        RegRdata1_EXE_MEM  <= RegRdata1_ID_EXE;
        RegRdata2_EXE_MEM  <= RegRdata2_ID_EXE;
-        cp0Rdata_EXE_MEM  <=  //cp0Rdata_ID_EXE;
+        cp0Rdata_EXE_MEM  <=     cp0Rdata_EXE; //cp0Rdata_ID_EXE;
     end
     else begin
       {    MemEn_EXE_MEM,  MemToReg_EXE_MEM,  MemWrite_EXE_MEM, RegWrite_EXE_MEM, 
@@ -213,7 +201,7 @@ module execute_stage(
          .is_lw        (           LW_ID_EXE),
          .is_sh        (           SH_ID_EXE),
          .is_sw        (           SW_ID_EXE),
-         .address      (       ALUResult_EXE),
+         .address      (  ALUResult_EXE[1:0]),
          .AdEL_EXE     (            AdEL_EXE),
          .AdES_EXE     (            AdES_EXE)
     );

@@ -14,7 +14,6 @@ module fetch_stage(
     input  wire        rst,
     // delay slot tag
     input  wire      DSI_ID, // delay slot instruction tag
-    input  wire    Excpt_ID, // Except tag
     // data passing from the PC calculate module
     input  wire     IRWrite,
     // For Stall
@@ -33,8 +32,6 @@ module fetch_stage(
   );
     parameter reset_addr = 32'hbfc00000;
 
-    reg  [1:0]  nop_count;
-
     assign inst_sram_en = ~rst;
 
     always @ (posedge clk) begin
@@ -43,23 +40,14 @@ module fetch_stage(
           PC_AdEL_IF_ID  <= 1'b0;
           PC_IF_ID       <= reset_addr;
           PC_add_4_IF_ID <= reset_addr+4;
-          Inst_IF_ID     <= 32'd0;  
-          nop_count      <= 2'b00;     
+          Inst_IF_ID     <= 32'd0;      
       end
       else if (IRWrite) begin
-          DSI_IF_ID      <= DSI;
+          DSI_IF_ID      <= DSI_ID;
           PC_AdEL_IF_ID  <= PC_AdEL;
           PC_IF_ID       <= PC_next;
-          PC_add_4_IF_ID <= PC_next+4;
-          if(Excpt_ID | (nop_count != 2'd0)) begin
-              Inst_IF_ID <= 32'd0;
-              if(nop_count == 2'b11)
-                  nop_count <= 2'b00;
-              else
-                  nop_count <= nop_count+1;
-          end
-          else
-              Inst_IF_ID     <= inst_sram_rdata;
+          PC_add_4_IF_ID <= PC_next+32'd4;
+          Inst_IF_ID     <= inst_sram_rdata;
       end
       else begin
           DSI_IF_ID      <=      DSI_IF_ID;
@@ -67,7 +55,6 @@ module fetch_stage(
           PC_IF_ID       <=       PC_IF_ID;
           PC_add_4_IF_ID <= PC_add_4_IF_ID;
           Inst_IF_ID     <=     Inst_IF_ID;
-          nop_count      <=      nop_count;
       end
     end
 

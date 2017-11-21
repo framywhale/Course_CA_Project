@@ -12,17 +12,18 @@ module decode_stage(
     input  wire                     clk,
     input  wire                     rst,
     // data passing from IF stage
-    input  reg                DSI_IF_ID,  // delay slot instruction tag
     input  wire [31:0]       Inst_IF_ID,
     input  wire [31:0]         PC_IF_ID,
     input  wire [31:0]   PC_add_4_IF_ID,
-    input  wire           PC_AdEL_IF_ID,  // new    
+    input  wire           PC_AdEL_IF_ID,  // new   
+    input  wire               DSI_IF_ID,  // delay slot instruction tag 
     // interaction with the Register files
     output wire [ 4:0]     RegRaddr1_ID,
     output wire [ 4:0]     RegRaddr2_ID,
     input  wire [31:0]     RegRdata1_ID,
     input  wire [31:0]     RegRdata2_ID,
-    
+    // siganls input from execute stage
+    input  wire        ex_int_handle_ID,
     //input  wire [31:0]      cp0Rdata_ID,
     // control signals passing to Bypass unit
     input  wire [31:0]       Bypass_EXE,
@@ -69,8 +70,10 @@ module decode_stage(
     output reg                SB_ID_EXE,  
     output reg                SH_ID_EXE,  
     output reg              mfc0_ID_EXE,
+    output reg         cp0_Write_ID_EXE,  // NEW
     output reg         is_signed_ID_EXE,  // new
     output reg               DSI_ID_EXE,  // delay slot instruction
+    output reg              eret_ID_EXE,
     // Exception vecter achieved in decode stage
     // Exc_vec_ID_EXE[3]: PC_AdEL
     // Exc_vec_ID_EXE[2]: Reserved Instruction
@@ -78,6 +81,7 @@ module decode_stage(
     // Exc_vec_ID_EXE[0]: breakpoint
     output reg  [ 3:0]   Exc_vec_ID_EXE,  
     // data transfering to EXE stage
+    output reg  [ 4:0]        Rd_ID_EXE,
     output reg  [ 4:0]  RegWaddr_ID_EXE,
     output reg  [31:0]  PC_add_4_ID_EXE,
     output reg  [31:0]        PC_ID_EXE,
@@ -86,24 +90,20 @@ module decode_stage(
     output reg  [31:0]        Sa_ID_EXE,
     output reg  [31:0] SgnExtend_ID_EXE,
     output reg  [31:0]   ZExtend_ID_EXE,
+
     
   //  output reg  [31:0]  cp0Rdata_ID_EXE,
 
     output wire           is_j_or_br_ID,
     output wire           is_rs_read_ID,
-    output wire           is_rt_read_ID,
-    output wire           eret_ID,
-    output wire           trap_ID,
-    output wire           cp0_Write,
-    output wire [ 4:0]    rd,
-    output wire [31:0]    RegRdata2_Final_ID,
-    output wire           DSI_ID,
-    output wire           Excpt_ID  
+    output wire           is_rt_read_ID
   );
 
 // `ifndef SIMU_DEBUG
 // reg  [31:0] de_inst;        //instr code @decode stage
 // `endif
+    wire                    eret_ID; 
+    wire                  cp0_Write;
     wire              BranchCond_ID;
     wire                    Zero_ID;
     wire                MemToReg_ID;
@@ -142,19 +142,19 @@ module decode_stage(
     wire                     sys_ID;
     wire                      bp_ID;
     wire [31:0]  RegRdata1_Final_ID;
+    wire [31:0]  RegRdata2_Final_ID;
     wire [ 3:0]          Exc_vec_ID;
 
-    reg               is_j_or_br_ID;  // new
     // Bypassed regdata
+    reg  [ 2:0]       nop_count;
 
-    wire [ 4:0]       rs,rt,sa;
+    wire [ 4:0]       rs,rt,sa,rd;
 
     wire [31:0]  ID_EXE_data;
     wire [31:0] EXE_MEM_data;
     wire [31:0]  MEM_WB_data;
 
     assign Exc_vec_ID = {PC_AdEL_IF_ID,RI_ID,sys_ID,bp_ID};
-    assign   Excpt_ID = |Exc_vec_ID;
 
     assign rs = Inst_IF_ID[25:21];
     assign rt = Inst_IF_ID[20:16];
@@ -176,12 +176,12 @@ module decode_stage(
     assign  J_target_ID = {{PC_IF_ID[31:28]},{Inst_IF_ID[25:0]},{2'b00}};
     assign JR_target_ID = RegRdata1_Final_ID;
     assign Br_target_ID = PC_add_4_ID + SgnExtend_LF2_ID;
-    assign        PC_ID =       PC_add_4_IF_ID;
-    assign  PC_add_4_ID =       PC_add_4_IF_ID;
+    assign        PC_ID = PC_IF_ID;
+    assign  PC_add_4_ID = PC_add_4_IF_ID;
 
     always @(posedge clk) begin
       if (rst) begin
-        {
+        {       nop_count,
              MemEn_ID_EXE,  MemToReg_ID_EXE,     ALUop_ID_EXE, RegWrite_ID_EXE, 
           MemWrite_ID_EXE,   ALUSrcA_ID_EXE,   ALUSrcB_ID_EXE,     MULT_ID_EXE, 
                DIV_ID_EXE,      MFHL_ID_EXE,      MTHL_ID_EXE,       LB_ID_EXE,
@@ -189,8 +189,27 @@ module decode_stage(
                 SW_ID_EXE,        SB_ID_EXE,        SH_ID_EXE,     mfc0_ID_EXE,
           RegWaddr_ID_EXE,        Sa_ID_EXE,        PC_ID_EXE, PC_add_4_ID_EXE, 
          RegRdata1_ID_EXE, RegRdata2_ID_EXE, SgnExtend_ID_EXE,  ZExtend_ID_EXE, 
-         is_signed_ID_EXE,       DSI_ID_EXE,  Exc_vec_ID_EXE
+         is_signed_ID_EXE,       DSI_ID_EXE,   Exc_vec_ID_EXE,     eret_ID_EXE,
+                Rd_ID_EXE, cp0_Write_ID_EXE
         } <= 'd0;
+       end
+       else if (ex_int_handle_ID || (nop_count != 3'd0)) begin
+          if(nop_count == 3'd3)
+              nop_count <= 3'd0;
+          else begin
+              nop_count <= nop_count+3'd1;
+          end
+          {
+               MemEn_ID_EXE,  MemToReg_ID_EXE,     ALUop_ID_EXE, RegWrite_ID_EXE, 
+            MemWrite_ID_EXE,   ALUSrcA_ID_EXE,   ALUSrcB_ID_EXE,     MULT_ID_EXE, 
+                 DIV_ID_EXE,      MFHL_ID_EXE,      MTHL_ID_EXE,       LB_ID_EXE,
+                 LBU_ID_EXE,        LH_ID_EXE,       LHU_ID_EXE,       LW_ID_EXE, 
+                  SW_ID_EXE,        SB_ID_EXE,        SH_ID_EXE,     mfc0_ID_EXE,
+            RegWaddr_ID_EXE,        Sa_ID_EXE,        PC_ID_EXE, PC_add_4_ID_EXE, 
+           RegRdata1_ID_EXE, RegRdata2_ID_EXE, SgnExtend_ID_EXE,  ZExtend_ID_EXE, 
+           is_signed_ID_EXE,       DSI_ID_EXE,   Exc_vec_ID_EXE,     eret_ID_EXE,
+                  Rd_ID_EXE, cp0_Write_ID_EXE
+          } <= 'd0;
        end
        else if (~ID_EXE_Stall) begin
           // control signals passing to EXE stage
@@ -216,9 +235,12 @@ module decode_stage(
              mfc0_ID_EXE  <=            mfc0_ID;
         is_signed_ID_EXE  <=       is_signed_ID;
           Exc_vec_ID_EXE  <=         Exc_vec_ID;
+        cp0_Write_ID_EXE  <=          cp0_Write;
               // delay slot 
               DSI_ID_EXE  <=          DSI_IF_ID;
+             eret_ID_EXE  <=            eret_ID;
         // data transfering to EXE stage
+               Rd_ID_EXE  <=                 rd;
          RegWaddr_ID_EXE  <=        RegWaddr_ID;
                Sa_ID_EXE  <=              Sa_ID;
                PC_ID_EXE  <=           PC_IF_ID;
@@ -237,7 +259,8 @@ module decode_stage(
                 SW_ID_EXE,        SB_ID_EXE,         SH_ID_EXE,     mfc0_ID_EXE,            
           RegWaddr_ID_EXE,        Sa_ID_EXE,         PC_ID_EXE, PC_add_4_ID_EXE, 
          RegRdata1_ID_EXE, RegRdata2_ID_EXE,  SgnExtend_ID_EXE,  ZExtend_ID_EXE, 
-         is_signed_ID_EXE,       DSI_ID_EXE,    Exc_vec_ID_EXE
+         is_signed_ID_EXE,       DSI_ID_EXE,    Exc_vec_ID_EXE,     eret_ID_EXE,
+                Rd_ID_EXE, cp0_Write_ID_EXE
         } <= 'd0;
       end
       else if (~DIV_Complete) begin
@@ -247,7 +270,8 @@ module decode_stage(
                LH_ID_EXE,        LHU_ID_EXE,        LW_ID_EXE,        SW_ID_EXE, 
                SB_ID_EXE,         SH_ID_EXE,      mfc0_ID_EXE,  RegWaddr_ID_EXE, 
                Sa_ID_EXE,         PC_ID_EXE,  PC_add_4_ID_EXE, SgnExtend_ID_EXE, 
-          ZExtend_ID_EXE,  is_signed_ID_EXE,       DSI_ID_EXE,   Exc_vec_ID_EXE
+          ZExtend_ID_EXE,  is_signed_ID_EXE,       DSI_ID_EXE,   Exc_vec_ID_EXE,
+             eret_ID_EXE,         Rd_ID_EXE, cp0_Write_ID_EXE
         } <= 'd0;  
 
               DIV_ID_EXE <=       DIV_ID_EXE;
@@ -276,10 +300,13 @@ module decode_stage(
               SH_ID_EXE   <=                SH_ID;
             mfc0_ID_EXE   <=              mfc0_ID;
        is_signed_ID_EXE   <=         is_signed_ID;
-           Exc_vec_ID_EXE <=           Exc_vec_ID;
+         Exc_vec_ID_EXE   <=           Exc_vec_ID;
         // delay slot 
+       cp0_Write_ID_EXE   <=            cp0_Write;
              DSI_ID_EXE   <=            DSI_IF_ID;  // DSI_ID is 
+            eret_ID_EXE   <=              eret_ID;
         // data transfering to EXE stage
+               Rd_ID_EXE  <=                 rd;
          RegWaddr_ID_EXE  <=          RegWaddr_ID;
                Sa_ID_EXE  <=                Sa_ID;
                PC_ID_EXE  <=             PC_IF_ID;
@@ -331,7 +358,7 @@ module decode_stage(
         .SB          (              SB_ID),
         .SH          (              SH_ID),
         .mfc0        (            mfc0_ID),
-        .trap        (            trap_ID),
+//        .trap        (            trap_ID),
         .eret        (            eret_ID),
         .cp0_Write   (          cp0_Write),
         .is_signed   (       is_signed_ID),

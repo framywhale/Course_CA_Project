@@ -17,13 +17,18 @@ module cp0reg(
     input                      rst,
     input                      wen,
     input                      eret,
-    input                      trap,
+    input                      Exc_BD,
     input  [              5:0] int,
+    input  [              6:0] Exc_Vec, //Exception type
     input  [`ADDR_WIDTH - 1:0] waddr,
     input  [`ADDR_WIDTH - 1:0] raddr,
     input  [`DATA_WIDTH - 1:0] wdata,
+    input  [`DATA_WIDTH - 1:0] epc_in,  
+    input  [`DATA_WIDTH - 1:0] Exc_BadVaddr,
     output [`DATA_WIDTH - 1:0] rdata,
-    output [`DATA_WIDTH - 1:0] epc_value
+    output [`DATA_WIDTH - 1:0] epc_value,
+    output                     ex_int_handle,
+    output                     eret_handle
 );
     // BadVAddr     reg: 8, sel: 0
     reg  [31:0] badvaddr;
@@ -95,23 +100,46 @@ module cp0reg(
     reg  [4:0]  cause_ExcCode;
 
     wire [31:0] cause_value;
+    wire [ 4:0]ExcCode;
     assign cause_value = {cause_BD,  cause_TI, 15'd0, cause_IP7, cause_IP6, 
                           cause_IP5, cause_IP4,       cause_IP3, cause_IP2,
                           cause_IP1, cause_IP0, 1'b0, cause_ExcCode, 2'd0};
-
+    assign ExcCode     =  (Exc_Vec[6]) ? 5'h4 :        // PC_AdEL
+                          (Exc_Vec[5]) ? 5'ha :        // Reserved Instruction
+                          (Exc_Vec[4]) ? 5'hc :        // OverFlow
+                          (Exc_Vec[3]) ? 5'h8 :        // syscall
+                          (Exc_Vec[2]) ? 5'h9 :        // breakpoint
+                          (Exc_Vec[1]) ? 5'h4 :        // AdEL
+                          (Exc_Vec[0]) ? 5'h5 : 5'hf;  // AdES;
     // EPC          reg: 14, sel: 0
     reg  [31:0] epc;
 
     assign epc_value = epc;
 
+    wire [7:0] int_vec;
+    wire int_pending = |int_vec & status_IE;
+    wire exc_pending = |Exc_Vec;
+
+    assign ex_int_handle = ~status_EXL & (int_pending | exc_pending);
+    
     always @(posedge clk) begin
+      if (~status_EXL) begin
+        if (|int_vec && status_IE) begin
+          cause_ExcCode <= 5'd0;
+        end
+        else if (|Exc_Vec) begin
+          cause_ExcCode <= ExcCode;
+          cause_BD      <= Exc_BD;
+          if (Exc_Vec[6] | Exc_Vec[1] | Exc_Vec[0])
+            badvaddr <= Exc_BadVaddr;
+        end
+      end
+
       // BadVAddr     reg: 8, sel: 0
       if(rst) begin
         badvaddr <= 32'd0;
       end
-      else if (wen && waddr==5'd8) begin
-        badvaddr <= wdata;
-      end
+
       // Count        reg: 9, sel: 0
       if(rst) begin
         cycle <= 1'b0;
@@ -124,8 +152,14 @@ module cp0reg(
       else begin
         cycle <= ~cycle;
         if(cycle) begin
-          count <= count + 1;
+          count <= count + 1'b1;
       end
+
+      if (rst)
+        compare <= 32'h0;
+      else if (wen && waddr == 5'd11)
+        compare <= wdata[31:0];    
+      
       // Status       reg: 12, sel: 0
       if (rst) begin
         status_IM7   <= 1'b0;
@@ -142,10 +176,11 @@ module cp0reg(
       else begin
         if (eret) 
           status_EXL <= 1'b0;
-        else if (trap)
+        else if (exc_pending)
           status_EXL <= 1'b1;
-        else
-          status_EXL <= status_EXL;
+        else if (wen && waddr == 5'd12)
+          status_EXL <= wdata[1];
+
         if (wen && waddr == 5'd12) begin
           status_IM7 <= wdata[ 15];
           status_IM6 <= wdata[ 14];
@@ -168,6 +203,7 @@ module cp0reg(
       else if (count_cmp_eq) begin
         cause_TI <= 1'b1;
       end
+
       if (rst) begin
         cause_BD      <= 1'b0;
         cause_IP7     <= 1'b0;
@@ -181,14 +217,11 @@ module cp0reg(
         cause_ExcCode <= 5'h1f;
       end
       else begin
-        if (trap) begin
-          cause_ExcCode <= 5'd8; //rs_ex ? rs_excode[4:0] : exe_excode[4:0];     
-        end
         if (wen && waddr == 5'd13) begin
           cause_IP1  <= wdata[ 9];
           cause_IP0  <= wdata[ 8];
         end
-        cause_IP7    <= int[5];
+        cause_IP7    <= int[5] | cause_TI;
         cause_IP6    <= int[4];
         cause_IP5    <= int[3];
         cause_IP4    <= int[2];
@@ -198,10 +231,11 @@ module cp0reg(
       // EPC          reg: 14, sel: 0
       if (rst) 
         epc <= 32'd0;
-      else if (!status_EXL)
-        epc <= epc;
+      else if (!status_EXL)   //
+        epc <= epc_in;
       else if (wen && waddr == 5'd14)
         epc <= wdata[31:0];
+end  
     end
 
     assign rdata = {32{&(~(raddr ^ 5'b01000))}}  & badvaddr_value |
@@ -210,55 +244,15 @@ module cp0reg(
                    {32{&(~(raddr ^ 5'b01100))}}  &   status_value |
                    {32{&(~(raddr ^ 5'b01101))}}  &    cause_value |
                    {32{&(~(raddr ^ 5'b01110))}}  &      epc_value ;
-                   
-endmodule // CP0 register files
-
-/*
-    reg [`DATA_WIDTH - 1:0] mem [0:(1 << `ADDR_WIDTH )- 1];
-    integer i;
-    always @ (posedge clk)
-    begin
-    if (rst == 1)
-        begin
-        for (i = 0; i < 1 << `ADDR_WIDTH  ; i = i + 1)
-            mem[i] <= `DATA_WIDTH'd0;
-        mem[11] = 32'h10400000;                      //Status
-        end
-    else begin 
-        if (wen != 4'd0 && waddr != 5'd0) begin
-        mem[waddr][31:24] <= {8{wen[3]}} & wdata[31:24];
-        mem[waddr][23:16] <= {8{wen[2]}} & wdata[23:16];
-        mem[waddr][15: 8] <= {8{wen[1]}} & wdata[15: 8];
-        mem[waddr][ 7: 0] <= {8{wen[0]}} & wdata[ 7: 0];
-        end
-        else if (eret) mem[11] <= mem[11] & 32'hfffffffd; //EXL <-- 0       
-        else if (trap) mem[11] <= mem[11] ^ 32'h00000002; //EXL <-- 1
-        else mem[0] <= mem[0];                            //default, in order that latch will not appear
-        end
-    end
-
-
-    assign rdata = eret ? mem[14] : mem[raddr];
-*/
-
-    // BadVAddr     reg: 8, sel: 0
-    /*  if (rs_valid && 
-          (rs_ex && rs_excode==`LS132R_EX_ADEL ||
-           exe_ex && (exe_excode==`LS132R_EX_ADEL || exe_excode==`LS132R_EX_ADES)))
-        badvaddr <= rs_ex ? rs_pc_r : mem_vaddr;    
-
-    // Count        reg: 9, sel: 0
-      if (rst)
-        count <= 32'h0;
-      else if (cp0_wen && cp0_waddr=={5'd9, 3'd0})
-        count <= wdata[31:0];
-      else if (count_add_en)
-        count <= count + 1'b1;    
-
-    // Compare      reg: 11, sel: 0
-      if (rst)
-        compare <= 32'h0;
-      else if (cp0_wen && cp0_waddr=={5'd11, 3'd0})
-        compare <= wdata[31:0];    
-
-    */
+    assign int_vec = {cause_IP7 & status_IM7,
+                                     cause_IP6 & status_IM6,
+                                     cause_IP5 & status_IM5,
+                                     cause_IP4 & status_IM4,
+                                     cause_IP3 & status_IM3,
+                                     cause_IP2 & status_IM2,
+                                     cause_IP1 & status_IM1,
+                                     cause_IP0 & status_IM0};
+               
+    assign eret_handle = eret; 
+               
+endmodule  // CP0 register files
