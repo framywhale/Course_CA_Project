@@ -10,40 +10,64 @@
 `define SIMU_DEBUG
 `timescale 10ns / 1ns
 
-module mycpu(
-    input           clk,
-    input           resetn,            //low active
-    input    [ 5:0] int_i,
+module mycpu_top(
+    input              clk,
+    input              resetn, 
+    input       [ 5:0] int_i,
+    // read address channel
+    output      [ 3:0] cpu_arid,         // M->S 
+    output      [31:0] cpu_araddr,       // M->S 
+    output      [ 7:0] cpu_arlen,        // M->S 
+    output      [ 2:0] cpu_arsize,       // M->S 
+    output      [ 1:0] cpu_arburst,      // M->S 
+    output      [ 1:0] cpu_arlock,       // M->S 
+    output      [ 3:0] cpu_arcache,      // M->S 
+    output      [ 2:0] cpu_arprot,       // M->S 
+    output             cpu_arvalid,      // M->S 
+    input              cpu_arready,      // S->M 
+    // read data channel
+    input       [ 3:0] cpu_rid,          // S->M 
+    input       [31:0] cpu_rdata,        // S->M 
+    input       [ 1:0] cpu_rresp,        // S->M 
+    input              cpu_rlast,        // S->M 
+    input              cpu_rvalid,       // S->M 
+    output             cpu_rready,       // M->S
+    // write address channel 
+    output      [ 3:0] cpu_awid,         // M->S
+    output      [31:0] cpu_awaddr,       // M->S
+    output      [ 7:0] cpu_awlen,        // M->S
+    output      [ 2:0] cpu_awsize,       // M->S
+    output      [ 1:0] cpu_awburst,      // M->S
+    output      [ 1:0] cpu_awlock,       // M->S
+    output      [ 3:0] cpu_awcache,      // M->S
+    output      [ 2:0] cpu_awprot,       // M->S
+    output             cpu_awvalid,      // M->S
+    input              cpu_awready,      // S->M
+    // write data channel
+    output      [ 3:0] cpu_wid,          // M->S
+    output      [31:0] cpu_wdata,        // M->S
+    output      [ 3:0] cpu_wstrb,        // M->S
+    output             cpu_wlast,        // M->S
+    output             cpu_wvalid,       // M->S
+    input              cpu_wready,       // S->M
+    // write response channel
+    input       [ 3:0] cpu_bid,          // S->M 
+    input       [ 1:0] cpu_bresp,        // S->M 
+    input              cpu_bvalid,       // S->M 
+    output             cpu_bready        // M->S 
 
-    output          inst_req,
-    output          inst_wr,
-    output   [ 1:0] inst_size,
-    output   [31:0] inst_addr,
-    output   [31:0] inst_wdata,
-    input    [31:0] inst_rdata,
-    input           inst_addr_ok,
-    input           inst_data_ok,
-
-    output          data_req,
-    output          data_wr,
-    output   [ 1:0] data_size,
-    output   [31:0] data_addr,
-    output   [31:0] data_wdata,
-    input    [31:0] data_rdata,
-    input           data_addr_ok,
-    input           data_data_ok,
-
+    // debug signals
   `ifdef SIMU_DEBUG
    ,output wire [31:0] debug_wb_pc,
     output wire [ 3:0] debug_wb_rf_wen,
     output wire [ 4:0] debug_wb_rf_wnum,
     output wire [31:0] debug_wb_rf_wdata
-  `endif
-);
+  `endif    
+  );
 
 // we only need an inst ROM now
-assign inst_sram_wen   = 4'b0;
-assign inst_sram_wdata = 32'b0;
+// assign inst_sram_wen   =  4'b0;
+// assign inst_sram_wdata = 32'b0;
 
 wire rst = ~resetn;
 
@@ -191,7 +215,6 @@ wire           mfc0_MEM_WB;
 
 wire [31:0] Bypass_EXE;
 wire [31:0] Bypass_MEM;
-
 
 wire [31:0] Exc_BadVaddr;
 wire [31:0] Exc_EPC;
@@ -430,7 +453,35 @@ memory_stage mem_stage(
     .cp0Rdata_MEM_WB   (  cp0Rdata_MEM_WB), // O 32
     .mfc0_MEM_WB       (      mfc0_MEM_WB), // O  1
     .mfc0_EXE_MEM      (     mfc0_EXE_MEM), // I  1
-    .cp0Rdata_EXE_MEM  ( cp0Rdata_EXE_MEM)  // I 32
+    .cp0Rdata_EXE_MEM  ( cp0Rdata_EXE_MEM), // I 32
+
+    .wb_allowin        (                 ),                
+    .mem_allowin       (                 ),              
+    .data_req          (                 ),          
+    .data_rdata_ok     (                 ),         
+    .mem_axi_rdata     (                 ),       
+    .mem_axi_rvalid    (                 ),           
+    .mem_axi_rid       (                 ),       
+    .mem_axi_rready    (                 ),           
+    .mem_axi_arid      (                 ),        
+    .mem_axi_araddr    (                 ), 
+    .mem_axi_arsize    (                 ), 
+    .mem_axi_arready   (                 ),       
+    .mem_axi_arvalid   (                 ),       
+    .mem_axi_awid      (                 ),           
+    .mem_axi_awaddr    (                 ),              
+    .mem_axi_awsize    (                 ),          
+    .mem_axi_awvalid   (                 ),           
+    .mem_axi_awready   (                 ),         
+    .mem_axi_wid       (                 ),              
+    .mem_axi_wdata     (                 ),          
+    .mem_axi_wstrb     (                 ),              
+    .mem_axi_wvalid    (                 ),  
+    .mem_axi_wready    (                 ),  
+    .mem_axi_bready    (                 ),  
+    .mem_axi_bid       (                 ),           
+    .mem_axi_bvalid    (                 ),
+    .load_type         (                 )    
   );
 
 
