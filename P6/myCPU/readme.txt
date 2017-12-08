@@ -1,0 +1,25 @@
+myCPU目录下包含12个.v文件，各文件功能如下：
+mycpu_top.v
+	流水线cpu顶层模块，完成各个模块的实例化
+Control_Unit.v
+	流水线cpu控制信号生成模块。
+reg_file.v
+	寄存器堆源码，未进行修改。
+alu.v
+	ALU源码，添加了nor,xor,sra,srl指令的操作。
+fetch_stage.v
+	取指级源码
+decode_stage.v
+	译码级源码，包含前递的数据。
+execute_stage.v
+	执行级源码，将ALUResult前递。
+memory_stage.v
+	访存级源码，将ALUResult_MEM前递。
+writeback_stage.v
+	写回级源码。
+Bypass_Unit.v
+	发出阻塞和前递数据选择的控制信号。
+MUX_4_32.v
+	4路32位选择器源码
+nextpc_gen.v
+	下地址生成模块源码。
