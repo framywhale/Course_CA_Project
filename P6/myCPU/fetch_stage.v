@@ -50,17 +50,16 @@ module fetch_stage(
   );
     parameter reset_addr = 32'hbfc00000;
 
-    reg [32:0] IR_buffer;
+    reg [32:0] IR_buffer,IR;
     reg arvalid_r, first_fetch;
 
     assign IR_IF_ID = IR;
     assign PC_fresh = fetch_axi_rvalid && fetch_axi_rready && !do_load;
 
-    assign fetch_axi_arvalid = ;
     assign fetch_axi_arsize = 3'b010;
 
     assign fetch_axi_rready = decode_allowin & IRWrite | do_load;
-    assign fetch_ready_go = fetch_axi_rvalid && (fetch_axi_rid == 3'd0) 
+    wire   fetch_ready_go = fetch_axi_rvalid && (fetch_axi_rid == 3'd0) 
                             || (IR_buffer[32] == 1'b1);
 
     assign data_rdata_ok  = !decode_allowin  && (fetch_axi_rid == 3'd1) 
@@ -77,6 +76,7 @@ module fetch_stage(
       end
       else if (fetch_axi_arready && arvalid_r) begin
         arvalid_r   <= 1'b0;
+        first_fetch <= 1'b0;
       end
     end
 
@@ -109,35 +109,6 @@ module fetch_stage(
         PC_AdEL_IF_ID  <= PC_AdEL;
         DSI_IF_ID      <= DSI_ID;
       end
+   end
 
 endmodule //fetch_stage
-
-/*
-
-    always @(posedge clk) begin
-      if (rst) begin
-        IR <= 32'd0;
-        IR_buffer <= 33'd0;
-      end
-      else begin
-        if (decode_allowin && (axi_rid=='d0&&axi_rready&&axi_rvalid)) begin
-          IR <= axi_rdata;
-        end
-        else if (decode_allowin && (IR_buffer[32])) begin
-          IR <= IR_buffer[31:0];
-        end
-      end
-    end
-
-    always @(posedge clk) begin
-      if (rst) begin
-        IR_buffer <= 33'd0;
-        IR        <= 32'd0;
-      end
-      else if ( decode_allowin ) begin
-        IR_buffer <= do_load ? {1'b1,axi_rdata} : 33'd0;
-        IR        <= (IR_buffer[32] == 1) ? IR_buffer : axi_rdata; 
-      end
-    end
-
- */
